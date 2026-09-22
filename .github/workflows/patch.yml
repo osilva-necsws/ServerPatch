@@ -24,12 +24,16 @@ on:
         description: 'JSON array of self-hosted runner labels to target, e.g. ["cyp-gen-windows"] or ["server1","server2"]'
         required: true
         default: '["cyp-gen-windows"]'
+      package_version:
+        description: "Version of the patch packages to fetch from GitHub Packages (published via publish-package.yml)"
+        required: true
+        default: "1.0.0"
       cpu_Patch7Zip:
-        description: "Filename of the 7-Zip installer pre-placed in package/ (leave blank if it's the only .exe there)"
+        description: "Filename to use for the 7-Zip installer fetched from GitHub Packages (leave blank to auto-detect the sole .exe in package/)"
         required: false
         default: ""
       cpu_PatchDB:
-        description: "Not used - Oracle patch zip + pack_oracle_dbhome.xml must be pre-placed in package/"
+        description: "Not used directly - Oracle patch zip + pack_oracle_dbhome.xml are fetched from GitHub Packages"
         required: false
         default: ""
       cpu_SID:
@@ -37,45 +41,48 @@ on:
         required: false
         default: ""
       cpu_PatchWebTier:
-        description: "Filename of the Tomcat ZIP pre-placed in package/ (required)"
+        description: "Filename to use for the Tomcat ZIP fetched from GitHub Packages"
         required: false
-        default: ""
+        default: "tomcat-package.zip"
       cpu_DOMAIN:
         description: "Tomcat domain name to patch (empty = all domains)"
         required: false
         default: ""
       FILEHANDLER_URL:
-        description: "Filename of FileHandler.war pre-placed in package/ (leave blank to skip this optional deployment)"
+        description: "Filename to use for FileHandler.war fetched from GitHub Packages (leave blank to skip this optional deployment)"
         required: false
         default: ""
       cpu_PatchMetabase:
-        description: "Filename of the Metabase JAR pre-placed in package/ (required)"
+        description: "Filename to use for the Metabase JAR fetched from GitHub Packages"
         required: false
-        default: ""
+        default: "metabase.jar"
       cpu_PatchMetabase_OJDBC:
-        description: "Filename of the OJDBC JAR pre-placed in package/ (optional)"
+        description: "Filename to use for the OJDBC JAR fetched from GitHub Packages (optional)"
         required: false
         default: ""
       cpu_PatchApache:
-        description: "Filename of the Apache 2.4 ZIP pre-placed in package/ (leave blank if it's the only .zip there)"
+        description: "Filename to use for the Apache 2.4 ZIP fetched from GitHub Packages (leave blank to auto-detect the sole .zip in package/)"
         required: false
         default: ""
       cpu_PatchPostgreSQL:
-        description: "Filename of the PostgreSQL v14 ZIP pre-placed in package/ (required)"
+        description: "Filename to use for the PostgreSQL v14 ZIP fetched from GitHub Packages"
         required: false
-        default: ""
+        default: "postgresql-14.zip"
       cpu_PatchPostgreSQL_v15:
-        description: "Filename of the PostgreSQL v15 ZIP pre-placed in package/ (optional)"
+        description: "Filename to use for the PostgreSQL v15 ZIP fetched from GitHub Packages (optional)"
         required: false
         default: ""
       cpu_PatchPostgreSQL_Orafce:
-        description: "Filename of the orafce extension ZIP pre-placed in package/ (optional)"
+        description: "Filename to use for the orafce extension ZIP fetched from GitHub Packages (optional)"
         required: false
         default: ""
       cpu_RequiredFreeSpace:
         description: "Required free disk space in GB on Oracle home drives"
         required: false
         default: "20"
+
+permissions:
+  packages: read
 
 env:
   cpu_Patch7Zip: ${{ github.event.inputs.cpu_Patch7Zip }}
@@ -129,6 +136,12 @@ jobs:
         with:
           name: oracle-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: ./ci/Get-MavenPackage.ps1 -Classifier "oracle-patch-metadata" -Type "xml" -Version "${{ github.event.inputs.package_version }}" -DestFileName "pack_oracle_dbhome.xml"
       - shell: pwsh
         run: |
           if (Test-Path "artifacts/no_databases_found.marker") {
@@ -181,6 +194,14 @@ jobs:
           name: oracle-validate-${{ matrix.server }}
           path: artifacts
           if-no-files-found: ignore
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: |
+          ./ci/Get-MavenPackage.ps1 -Classifier "oracle-patch" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName "oracle-patch.zip"
+          ./ci/Get-MavenPackage.ps1 -Classifier "oracle-patch-metadata" -Type "xml" -Version "${{ github.event.inputs.package_version }}" -DestFileName "pack_oracle_dbhome.xml"
       - shell: pwsh
         run: |
           if (Test-Path "artifacts/no_databases_found.marker") {
@@ -221,6 +242,12 @@ jobs:
           name: oracle-validate-${{ matrix.server }}
           path: artifacts
           if-no-files-found: ignore
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: ./ci/Get-MavenPackage.ps1 -Classifier "oracle-patch-metadata" -Type "xml" -Version "${{ github.event.inputs.package_version }}" -DestFileName "pack_oracle_dbhome.xml"
       - shell: pwsh
         run: ./ci/Check-Oracle-PostPatch-Version.ps1
       - uses: actions/upload-artifact@v4
@@ -279,6 +306,12 @@ jobs:
           name: oracle-rerun-datapatch-${{ matrix.server }}
           path: artifacts
           if-no-files-found: ignore
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: ./ci/Get-MavenPackage.ps1 -Classifier "oracle-patch-metadata" -Type "xml" -Version "${{ github.event.inputs.package_version }}" -DestFileName "pack_oracle_dbhome.xml"
       - shell: pwsh
         run: ./ci/Verify-Patch-Success.ps1
       - uses: actions/upload-artifact@v4
@@ -351,6 +384,14 @@ jobs:
         with:
           name: tomcat-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        if: github.event.inputs.FILEHANDLER_URL != ''
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        if: github.event.inputs.FILEHANDLER_URL != ''
+        run: ./ci/Get-MavenPackage.ps1 -Classifier "filehandler" -Type "war" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.FILEHANDLER_URL }}"
       - shell: pwsh
         run: ./ci/Deploy-FileHandler.ps1
 
@@ -369,6 +410,12 @@ jobs:
         with:
           name: tomcat-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: ./ci/Get-MavenPackage.ps1 -Classifier "tomcat" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchWebTier }}"
       - shell: pwsh
         run: |
           $jsonPath = "artifacts/tomcat_instances.json"
@@ -470,6 +517,16 @@ jobs:
         with:
           name: metabase-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: |
+          ./ci/Get-MavenPackage.ps1 -Classifier "metabase" -Type "jar" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchMetabase }}"
+          if ("${{ github.event.inputs.cpu_PatchMetabase_OJDBC }}" -ne "") {
+            ./ci/Get-MavenPackage.ps1 -Classifier "metabase-ojdbc" -Type "jar" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchMetabase_OJDBC }}"
+          }
       - shell: pwsh
         run: |
           $jsonPath = "artifacts/metabase_instance.json"
@@ -571,6 +628,21 @@ jobs:
         with:
           name: postgresql-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.cpu_PatchPostgreSQL }}" -ne "") {
+            ./ci/Get-MavenPackage.ps1 -Classifier "postgresql-v14" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchPostgreSQL }}"
+          }
+          if ("${{ github.event.inputs.cpu_PatchPostgreSQL_v15 }}" -ne "") {
+            ./ci/Get-MavenPackage.ps1 -Classifier "postgresql-v15" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchPostgreSQL_v15 }}"
+          }
+          if ("${{ github.event.inputs.cpu_PatchPostgreSQL_Orafce }}" -ne "") {
+            ./ci/Get-MavenPackage.ps1 -Classifier "postgresql-orafce" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName "${{ github.event.inputs.cpu_PatchPostgreSQL_Orafce }}"
+          }
       - shell: pwsh
         run: |
           $jsonPath = "artifacts/postgresql_instance.json"
@@ -670,6 +742,14 @@ jobs:
         with:
           name: apache-check-${{ matrix.server }}
           path: artifacts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: |
+          $dest = if ("${{ github.event.inputs.cpu_PatchApache }}" -ne "") { "${{ github.event.inputs.cpu_PatchApache }}" } else { "apache-package.zip" }
+          ./ci/Get-MavenPackage.ps1 -Classifier "apache" -Type "zip" -Version "${{ github.event.inputs.package_version }}" -DestFileName $dest
       - shell: pwsh
         run: |
           $jsonPath = "artifacts/apache_instance.json"
@@ -745,6 +825,14 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.server }}"]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        run: |
+          $dest = if ("${{ github.event.inputs.cpu_Patch7Zip }}" -ne "") { "${{ github.event.inputs.cpu_Patch7Zip }}" } else { "7z-x64.exe" }
+          ./ci/Get-MavenPackage.ps1 -Classifier "sevenzip" -Type "exe" -Version "${{ github.event.inputs.package_version }}" -DestFileName $dest
       - shell: pwsh
         run: ./ci/Patch-7Zip.ps1
       - uses: actions/upload-artifact@v4

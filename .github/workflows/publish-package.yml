@@ -1,0 +1,88 @@
+name: Publish Patch Package to GitHub Packages
+
+# Uploads a single patch binary (Oracle patch zip, Tomcat zip, Metabase jar, etc.)
+# to this repo's GitHub Packages Maven registry, replacing manual Artifactory uploads.
+# The file must already exist in package/ on the runner before triggering this.
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Which package to publish"
+        required: true
+        type: choice
+        options:
+          - "oracle-patch"
+          - "oracle-patch-metadata"
+          - "tomcat"
+          - "metabase"
+          - "metabase-ojdbc"
+          - "postgresql-v14"
+          - "postgresql-v15"
+          - "postgresql-orafce"
+          - "apache"
+          - "sevenzip"
+          - "filehandler"
+      file_name:
+        description: "Filename of the package inside package/ to upload"
+        required: true
+      version:
+        description: "Version to publish under, e.g. 19.32.0 or 2026.09.22"
+        required: true
+      runner_label:
+        description: "Self-hosted runner label to run this on"
+        required: true
+        default: "cyp-gen-windows"
+
+permissions:
+  packages: write
+
+jobs:
+  publish:
+    runs-on: [self-hosted, "${{ github.event.inputs.runner_label }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $componentTypes = @{
+            "oracle-patch"           = "zip"
+            "oracle-patch-metadata"  = "xml"
+            "tomcat"                 = "zip"
+            "metabase"                = "jar"
+            "metabase-ojdbc"         = "jar"
+            "postgresql-v14"         = "zip"
+            "postgresql-v15"         = "zip"
+            "postgresql-orafce"      = "zip"
+            "apache"                  = "zip"
+            "sevenzip"                = "exe"
+            "filehandler"             = "war"
+          }
+
+          $component = "${{ github.event.inputs.component }}"
+          $type = $componentTypes[$component]
+          $filePath = Join-Path "package" "${{ github.event.inputs.file_name }}"
+
+          if (-not (Test-Path $filePath)) {
+            Write-Host "ERROR: File not found: $filePath" -ForegroundColor Red
+            exit 1
+          }
+
+          mvn -B -f maven/pom.xml -s maven/settings.xml deploy:deploy-file `
+            "-Dfile=$filePath" `
+            "-DgroupId=uk.co.caci.childview" `
+            "-DartifactId=patch-packages" `
+            "-Dversion=${{ github.event.inputs.version }}" `
+            "-Dpackaging=$type" `
+            "-Dclassifier=$component"
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: Publish failed" -ForegroundColor Red
+            exit 1
+          }
+
+          Write-Host "✓ Published $component version ${{ github.event.inputs.version }}" -ForegroundColor Green

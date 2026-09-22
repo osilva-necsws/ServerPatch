@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Umbrella project used only to publish/resolve ChildView patch binaries
+  (Oracle, Tomcat, Metabase, PostgreSQL, Apache, 7-Zip, FileHandler) as
+  generic Maven artifacts in GitHub Packages - replaces Artifactory.
+  There is no Java source here; artifacts are uploaded with
+  deploy:deploy-file and fetched with dependency:copy (see ci/Get-MavenPackage.ps1
+  and .github/workflows/publish-package.yml).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>uk.co.caci.childview</groupId>
+  <artifactId>patch-packages</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+
+  <name>ChildView Patch Packages</name>
+
+  <repositories>
+    <repository>
+      <id>github</id>
+      <url>https://maven.pkg.github.com/osilva-necsws/ServerPatch</url>
+    </repository>
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <url>https://maven.pkg.github.com/osilva-necsws/ServerPatch</url>
+    </repository>
+  </distributionManagement>
+</project>
