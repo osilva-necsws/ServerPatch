@@ -129,8 +129,8 @@ Write-Host ""
 # Set up paths
 $modulePath = Join-Path $baseDir "lib"
 $resourcePath = Join-Path $baseDir "resource"
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "postgresql" } else { Join-Path $baseDir "package" }
+# Package files are expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packagePath = Join-Path $baseDir "package"
 $logPath = Join-Path $baseDir "logs"
 
 # Set global variables for modules
@@ -185,37 +185,22 @@ foreach ($pkg in $packagesToDownload) {
     $packageFileName = Split-Path $packageUrl -Leaf
     
     Write-Host "----------------------------------------" -ForegroundColor Gray
-    Write-Host "Downloading $packageVersion package" -ForegroundColor Cyan
+    Write-Host "Locating $packageVersion package" -ForegroundColor Cyan
     Write-Host "----------------------------------------" -ForegroundColor Gray
     Write-Host "Package Information:" -ForegroundColor Cyan
-    Write-Host "  URL: $packageUrl" -ForegroundColor White
     Write-Host "  File: $packageFileName" -ForegroundColor White
     Write-Host ""
     
-    # Download package
+    # Package is expected to be pre-placed in package/ (Artifactory no longer used)
     $packageLocalPath = Join-Path $packagePath $packageFileName
     
-    Write-Host "Downloading to: $packageLocalPath" -ForegroundColor Gray
-    
-    try {
-        # Create package directory if it doesn't exist
-        if (-not (Test-Path $packagePath)) {
-            New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
-        }
-        
-        # Download the file
-        Invoke-WebRequest -Uri $packageUrl -OutFile $packageLocalPath -ErrorAction Stop
-        
-        if (Test-Path $packageLocalPath) {
-            $fileSize = (Get-Item $packageLocalPath).Length
-            Write-Host "✓ Downloaded package ($([math]::Round($fileSize / 1MB, 2)) MB)" -ForegroundColor Green
-        } else {
-            throw "Package file not found after download"
-        }
-    } catch {
-        Write-Host "ERROR: Failed to download package: $_" -ForegroundColor Red
+    if (-not (Test-Path $packageLocalPath)) {
+        Write-Host "ERROR: Package not found. Place it at: $packageLocalPath" -ForegroundColor Red
         continue
     }
+    
+    $fileSize = (Get-Item $packageLocalPath).Length
+    Write-Host "✓ Using local package ($([math]::Round($fileSize / 1MB, 2)) MB)" -ForegroundColor Green
     
     # Calculate MD5 checksum
     Write-Host "Calculating checksum..." -ForegroundColor Gray
@@ -290,12 +275,12 @@ if ($extractedPackages.Count -eq 0) {
     exit 1
 }
 
-# Download and extract orafce extension if URL provided
+# Extract orafce extension if configured (pre-placed in package/, Artifactory no longer used)
 $orafceExtracted = $null
 if (-not [string]::IsNullOrWhiteSpace($cpuPatchPostgreSQL_Orafce)) {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Downloading Orafce Extension" -ForegroundColor Cyan
+    Write-Host "Locating Orafce Extension" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     
@@ -303,20 +288,16 @@ if (-not [string]::IsNullOrWhiteSpace($cpuPatchPostgreSQL_Orafce)) {
     $orafceLocalPath = Join-Path $packagePath $orafceFileName
     
     Write-Host "Package Information:" -ForegroundColor Cyan
-    Write-Host "  URL: $cpuPatchPostgreSQL_Orafce" -ForegroundColor White
     Write-Host "  File: $orafceFileName" -ForegroundColor White
     Write-Host ""
     
     try {
-        Write-Host "Downloading to: $orafceLocalPath" -ForegroundColor Gray
-        Invoke-WebRequest -Uri $cpuPatchPostgreSQL_Orafce -OutFile $orafceLocalPath -ErrorAction Stop
-        
-        if (Test-Path $orafceLocalPath) {
-            $fileSize = (Get-Item $orafceLocalPath).Length
-            Write-Host "✓ Downloaded orafce package ($([math]::Round($fileSize / 1KB, 2)) KB)" -ForegroundColor Green
-        } else {
-            throw "Package file not found after download"
+        if (-not (Test-Path $orafceLocalPath)) {
+            throw "Package not found. Place it at: $orafceLocalPath"
         }
+        
+        $fileSize = (Get-Item $orafceLocalPath).Length
+        Write-Host "✓ Using local package ($([math]::Round($fileSize / 1KB, 2)) KB)" -ForegroundColor Green
         
         Write-Host ""
         Write-Host "Extracting orafce package..." -ForegroundColor Cyan
@@ -344,7 +325,7 @@ if (-not [string]::IsNullOrWhiteSpace($cpuPatchPostgreSQL_Orafce)) {
             Write-Host "⚠ Orafce package structure incorrect - expected 'lib' and 'extension' folders" -ForegroundColor Yellow
         }
     } catch {
-        Write-Host "ERROR: Failed to download/extract orafce: $_" -ForegroundColor Red
+        Write-Host "ERROR: Failed to locate/extract orafce: $_" -ForegroundColor Red
     }
     Write-Host ""
 }

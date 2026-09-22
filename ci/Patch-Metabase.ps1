@@ -74,8 +74,8 @@ Write-Host "✓ All required environment variables are set" -ForegroundColor Gre
 Write-Host ""
 
 # Set up paths
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "metabase" } else { Join-Path $baseDir "package" }
+# Package files are expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packagePath = Join-Path $baseDir "package"
 $logPath = Join-Path $baseDir "logs"
 
 if (-not (Test-Path $packagePath)) {
@@ -95,65 +95,43 @@ if (-not [string]::IsNullOrWhiteSpace($cpuPatchMetabaseOJDBC)) {
 }
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Downloading Metabase Package from Artifactory" -ForegroundColor Cyan
+Write-Host "Locating Metabase Package" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Package Information:" -ForegroundColor Cyan
-Write-Host "  URL: $cpuPatchMetabase" -ForegroundColor White
 Write-Host "  File: $metabaseFileName" -ForegroundColor White
 Write-Host ""
 
-# Download Metabase JAR
-try {
-    Write-Host "Downloading Metabase package from: $cpuPatchMetabase" -ForegroundColor Cyan
-    Write-Host "Downloading to: $metabasePackagePath" -ForegroundColor Gray
-    
-    Invoke-WebRequest -Uri $cpuPatchMetabase -OutFile $metabasePackagePath -UseBasicParsing
-    
-    if (Test-Path $metabasePackagePath) {
-        $fileSize = (Get-Item $metabasePackagePath).Length
-        Write-Host "✓ Downloaded Metabase package ($([math]::Round($fileSize / 1MB, 2)) MB)" -ForegroundColor Green
-    } else {
-        Write-Host "ERROR: Download appeared to succeed but file not found" -ForegroundColor Red
-        exit 1
-    }
-} catch {
-    Write-Host "ERROR: Failed to download Metabase package: $_" -ForegroundColor Red
+# Metabase JAR is expected to be pre-placed in package/ (Artifactory no longer used)
+if (-not (Test-Path $metabasePackagePath)) {
+    Write-Host "ERROR: Metabase package not found. Place it at: $metabasePackagePath" -ForegroundColor Red
     exit 1
 }
 
-# Download OJDBC JAR if URL provided
+$fileSize = (Get-Item $metabasePackagePath).Length
+Write-Host "✓ Using local package ($([math]::Round($fileSize / 1MB, 2)) MB)" -ForegroundColor Green
+
+# Verify OJDBC JAR if configured
 if (-not [string]::IsNullOrWhiteSpace($cpuPatchMetabaseOJDBC)) {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Downloading OJDBC from Artifactory" -ForegroundColor Cyan
+    Write-Host "Locating OJDBC Package" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Package Information:" -ForegroundColor Cyan
-    Write-Host "  URL: $cpuPatchMetabaseOJDBC" -ForegroundColor White
     Write-Host "  File: $ojdbcFileName" -ForegroundColor White
     Write-Host ""
-    
-    try {
-        Write-Host "Downloading OJDBC from: $cpuPatchMetabaseOJDBC" -ForegroundColor Cyan
-        Write-Host "Downloading to: $ojdbcPackagePath" -ForegroundColor Gray
-        
-        Invoke-WebRequest -Uri $cpuPatchMetabaseOJDBC -OutFile $ojdbcPackagePath -UseBasicParsing
-        
-        if (Test-Path $ojdbcPackagePath) {
-            $fileSize = (Get-Item $ojdbcPackagePath).Length
-            Write-Host "✓ Downloaded OJDBC ($([math]::Round($fileSize / 1KB, 2)) KB)" -ForegroundColor Green
-        } else {
-            Write-Host "ERROR: Download appeared to succeed but file not found" -ForegroundColor Red
-            exit 1
-        }
-    } catch {
-        Write-Host "ERROR: Failed to download OJDBC: $_" -ForegroundColor Red
+
+    if (-not (Test-Path $ojdbcPackagePath)) {
+        Write-Host "ERROR: OJDBC package not found. Place it at: $ojdbcPackagePath" -ForegroundColor Red
         exit 1
     }
+
+    $fileSize = (Get-Item $ojdbcPackagePath).Length
+    Write-Host "✓ Using local package ($([math]::Round($fileSize / 1KB, 2)) KB)" -ForegroundColor Green
 } else {
     Write-Host ""
-    Write-Host "ℹ No OJDBC URL provided - skipping OJDBC download" -ForegroundColor Gray
+    Write-Host "ℹ No OJDBC filename provided - skipping OJDBC deployment" -ForegroundColor Gray
 }
 
 Write-Host ""

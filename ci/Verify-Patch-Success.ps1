@@ -72,28 +72,23 @@ if (-not (Test-Path $sqlplusPath)) {
     exit 1
 }
 
-# Download and parse expected version from pack_oracle_dbhome.xml
+# Read expected version from the local pack_oracle_dbhome.xml (Artifactory no longer used)
 $expectedPackVersion = $null
 try {
-    $cpu_PatchDB = $env:cpu_PatchDB
-    if (-not [string]::IsNullOrWhiteSpace($cpu_PatchDB)) {
-        $artifactoryUrl = $cpu_PatchDB.TrimEnd('/') + '/'
-        $packXmlUrl = $artifactoryUrl + 'pack_oracle_dbhome.xml'
-        $tempPackXml = Join-Path $env:TEMP "pack_oracle_dbhome_verify_$([guid]::NewGuid()).xml"
-        
-        Write-Host "Downloading pack metadata for version verification..." -ForegroundColor Cyan
-        Invoke-WebRequest -Uri $packXmlUrl -OutFile $tempPackXml -UseBasicParsing
-        
-        if (Test-Path $tempPackXml) {
-            [xml]$packXml = Get-Content $tempPackXml
-            $expectedPackVersion = $packXml.Objs.Obj.MS.S | Where-Object { $_.N -eq 'version' } | Select-Object -ExpandProperty '#text'
-            
-            if ($expectedPackVersion) {
-                Write-Host "✓ Expected pack version: $expectedPackVersion" -ForegroundColor Green
-            }
-            
-            Remove-Item $tempPackXml -Force -ErrorAction SilentlyContinue
+    $packageFolder = Join-Path $PSScriptRoot "..\package"
+    $tempPackXml = Join-Path $packageFolder "pack_oracle_dbhome.xml"
+
+    Write-Host "Reading pack metadata for version verification..." -ForegroundColor Cyan
+
+    if (Test-Path $tempPackXml) {
+        [xml]$packXml = Get-Content $tempPackXml
+        $expectedPackVersion = $packXml.Objs.Obj.MS.S | Where-Object { $_.N -eq 'version' } | Select-Object -ExpandProperty '#text'
+
+        if ($expectedPackVersion) {
+            Write-Host "✓ Expected pack version: $expectedPackVersion" -ForegroundColor Green
         }
+    } else {
+        Write-Host "⚠ WARNING: pack_oracle_dbhome.xml not found in package folder" -ForegroundColor Yellow
     }
 } catch {
     Write-Host "⚠ WARNING: Could not retrieve pack version for comparison: $($_.Exception.Message)" -ForegroundColor Yellow

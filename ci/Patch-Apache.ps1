@@ -20,11 +20,29 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Apache 2.4 Patching" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
-if (-not $PackagePath -match "^http") {
-    if (-not (Test-Path $PackagePath)) {
-        Write-Host "Package not found: $PackagePath" -ForegroundColor Red
+# Apache package is expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packageDir = Join-Path $PSScriptRoot "..\package"
+if (-not (Test-Path $packageDir)) {
+    New-Item -Path $packageDir -ItemType Directory -Force | Out-Null
+}
+
+if ($PackagePath -and $PackagePath -notmatch '^https?://') {
+    $localPackage = Join-Path $packageDir (Split-Path $PackagePath -Leaf)
+} else {
+    $candidates = Get-ChildItem -Path $packageDir -Filter "*.zip" -File -ErrorAction SilentlyContinue
+    if ($candidates.Count -eq 1) {
+        $localPackage = $candidates[0].FullName
+    } elseif ($candidates.Count -gt 1) {
+        Write-Host "ERROR: Multiple .zip files found in $packageDir - set cpu_PatchApache to the exact filename." -ForegroundColor Red
         exit 1
+    } else {
+        $localPackage = $null
     }
+}
+
+if (-not $localPackage -or -not (Test-Path $localPackage)) {
+    Write-Host "ERROR: Apache package not found. Place the ZIP file in: $packageDir" -ForegroundColor Red
+    exit 1
 }
 
 # Dynamically find Apache Services
@@ -40,12 +58,9 @@ if (-not $apacheServices -or $apacheServices.Count -eq 0) {
 $TempDir = Join-Path $env:TEMP "ApacheUpdate_$(Get-Date -UFormat %s)"
 New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-$downloadPath = Join-Path $TempDir "httpd-package.zip"
-Write-Host "Downloading Apache package from Artifactory..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $PackagePath -OutFile $downloadPath -UseBasicParsing
-
+Write-Host "Using local Apache package: $localPackage" -ForegroundColor Cyan
 Write-Host "Extracting update package to $TempDir"
-Expand-Archive -Path $downloadPath -DestinationPath $TempDir -Force
+Expand-Archive -Path $localPackage -DestinationPath $TempDir -Force
 
 $successCount = 0
 

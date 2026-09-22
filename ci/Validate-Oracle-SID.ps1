@@ -32,20 +32,12 @@ $cpu_PatchDB = $env:cpu_PatchDB
 
 Write-Host "Configuration:" -ForegroundColor Cyan
 Write-Host "  cpu_SID = $cpu_SID"
-Write-Host "  cpu_PatchDB = $cpu_PatchDB"
 Write-Host ""
 
 # Validate cpu_SID is set
 if ([string]::IsNullOrWhiteSpace($cpu_SID)) {
     Write-Host "ERROR: cpu_SID environment variable is required" -ForegroundColor Red
     Write-Host "Please set the cpu_SID variable and try again." -ForegroundColor Red
-    exit 1
-}
-
-# Validate cpu_PatchDB is set
-if ([string]::IsNullOrWhiteSpace($cpu_PatchDB)) {
-    Write-Host "ERROR: cpu_PatchDB environment variable is required" -ForegroundColor Red
-    Write-Host "Please set the cpu_PatchDB variable and try again." -ForegroundColor Red
     exit 1
 }
 
@@ -104,20 +96,18 @@ try {
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
         
-        # Download pack_oracle_dbhome.xml from Artifactory
+        # Read pack_oracle_dbhome.xml from the local package folder (Artifactory no longer used)
         try {
-            $artifactoryUrl = $cpu_PatchDB.TrimEnd('/') + '/'
-            $packXmlUrl = $artifactoryUrl + 'pack_oracle_dbhome.xml'
-            $tempPackXml = Join-Path $env:TEMP "pack_oracle_dbhome_$([guid]::NewGuid()).xml"
+            $packageFolder = Join-Path $PSScriptRoot "..\package"
+            $tempPackXml = Join-Path $packageFolder "pack_oracle_dbhome.xml"
             
-            Write-Host "Downloading pack metadata from: $packXmlUrl" -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $packXmlUrl -OutFile $tempPackXml -UseBasicParsing
+            Write-Host "Reading pack metadata from: $tempPackXml" -ForegroundColor Cyan
             
             if (-not (Test-Path $tempPackXml)) {
-                Write-Host "⚠ WARNING: Could not download pack_oracle_dbhome.xml" -ForegroundColor Yellow
+                Write-Host "⚠ WARNING: pack_oracle_dbhome.xml not found in package folder" -ForegroundColor Yellow
                 Write-Host "Skipping version validation" -ForegroundColor Yellow
             } else {
-                Write-Host "✓ Pack metadata downloaded" -ForegroundColor Green
+                Write-Host "✓ Pack metadata found" -ForegroundColor Green
                 Write-Host ""
                 
                 # Parse XML to get version
@@ -244,8 +234,7 @@ EXIT;
                     }
                 }
                 
-                # Clean up temp file
-                Remove-Item $tempPackXml -Force -ErrorAction SilentlyContinue
+                # No cleanup needed - pack_oracle_dbhome.xml is a persistent local package file
             }
             
         } catch {

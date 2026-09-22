@@ -34,7 +34,6 @@ $cpu_PatchDB = $env:cpu_PatchDB
 $cpu_SID = $env:cpu_SID
 
 Write-Host "Configuration:" -ForegroundColor Cyan
-Write-Host "  Artifactory URL = $cpu_PatchDB"
 Write-Host "  cpu_SID = $cpu_SID"
 Write-Host ""
 
@@ -64,11 +63,6 @@ try {
 # Validate required environment variables
 $validationFailed = $false
 
-if ([string]::IsNullOrWhiteSpace($cpu_PatchDB)) {
-    Write-Host "ERROR: cpu_PatchDB environment variable is required for Patch Oracle action" -ForegroundColor Red
-    $validationFailed = $true
-}
-
 if ([string]::IsNullOrWhiteSpace($cpu_SID)) {
     Write-Host "ERROR: cpu_SID environment variable is required for Patch Oracle action" -ForegroundColor Red
     $validationFailed = $true
@@ -90,19 +84,17 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 try {
-    # Download pack_oracle_dbhome.xml from Artifactory
-    $artifactoryUrl = $cpu_PatchDB.TrimEnd('/') + '/'
-    $packXmlUrl = $artifactoryUrl + 'pack_oracle_dbhome.xml'
-    $tempPackXml = Join-Path $env:TEMP "pack_oracle_dbhome_prepatch_$([guid]::NewGuid()).xml"
+    # Read pack_oracle_dbhome.xml from the local package folder (Artifactory no longer used)
+    $packageFolder = Join-Path $installerRoot "package"
+    $tempPackXml = Join-Path $packageFolder "pack_oracle_dbhome.xml"
     
-    Write-Host "Downloading pack metadata from: $packXmlUrl" -ForegroundColor Cyan
-    Invoke-WebRequest -Uri $packXmlUrl -OutFile $tempPackXml -UseBasicParsing
+    Write-Host "Reading pack metadata from: $tempPackXml" -ForegroundColor Cyan
     
     if (-not (Test-Path $tempPackXml)) {
-        Write-Host "⚠ WARNING: Could not download pack_oracle_dbhome.xml" -ForegroundColor Yellow
+        Write-Host "⚠ WARNING: pack_oracle_dbhome.xml not found in package folder" -ForegroundColor Yellow
         Write-Host "Skipping pre-patch version check" -ForegroundColor Yellow
     } else {
-        Write-Host "✓ Pack metadata downloaded" -ForegroundColor Green
+        Write-Host "✓ Pack metadata found" -ForegroundColor Green
         Write-Host ""
         
         # Parse XML to get version
@@ -212,9 +204,6 @@ EXIT;
                                 Write-Host "because the database is already at the target version." -ForegroundColor Cyan
                                 Write-Host ""
                                 
-                                # Clean up temp pack XML
-                                Remove-Item $tempPackXml -Force -ErrorAction SilentlyContinue
-                                
                                 exit 0
                             } else {
                                 Write-Host "Database version differs from pack version - proceeding with patch" -ForegroundColor Cyan
@@ -231,8 +220,7 @@ EXIT;
             }
         }
         
-        # Clean up temp pack XML
-        Remove-Item $tempPackXml -Force -ErrorAction SilentlyContinue
+        # No cleanup needed - pack_oracle_dbhome.xml is a persistent local package file
     }
     
 } catch {
@@ -246,97 +234,38 @@ Write-Host ""
 $installerRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $installerRoot
 
-# Download patch files from Artifactory
+# Locate patch files in the local package folder
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Downloading Oracle Patch Files from Artifactory" -ForegroundColor Cyan
+Write-Host "Locating Oracle Patch Files" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$packageFolder = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "oracle" } else { Join-Path $installerRoot "package" }
+# Package files (database pack + pack_oracle_dbhome.xml metadata) are expected to be
+# pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packageFolder = Join-Path $installerRoot "package"
 if (-not (Test-Path $packageFolder)) {
     Write-Host "Creating package folder: $packageFolder" -ForegroundColor Cyan
     New-Item -Path $packageFolder -ItemType Directory -Force | Out-Null
 }
 
 Write-Host "Package folder: $packageFolder" -ForegroundColor White
-Write-Host "Artifactory URL: $cpu_PatchDB" -ForegroundColor White
 Write-Host ""
 
-try {
-    # Ensure the URL ends with a slash
-    $artifactoryUrl = $cpu_PatchDB.TrimEnd('/') + '/'
-    
-    # List files in the Artifactory directory
-    Write-Host "Querying Artifactory for available files..." -ForegroundColor Cyan
-    $apiUrl = $artifactoryUrl -replace '/artifactory/', '/artifactory/api/storage/'
-    
-    $response = Invoke-RestMethod -Uri $apiUrl -Method Get -UseBasicParsing
-    
-    if (-not $response.children -or $response.children.Count -eq 0) {
-        Write-Host "ERROR: No files found at: $artifactoryUrl" -ForegroundColor Red
-        exit 1
-    }
-    
-    Write-Host "✓ Found $($response.children.Count) file(s) in Artifactory" -ForegroundColor Green
-    Write-Host ""
-    
-    # Download all files (expecting 2: database pack and metadata)
-    $downloadedFiles = @()
-    foreach ($file in $response.children) {
-        if ($file.folder) {
-            continue  # Skip subdirectories
-        }
-        
-        $fileName = $file.uri.TrimStart('/')
-        $fileUrl = $artifactoryUrl + $fileName
-        $destinationPath = Join-Path $packageFolder $fileName
-        
-        Write-Host "Downloading: $fileName" -ForegroundColor Cyan
-        Write-Host "  From: $fileUrl" -ForegroundColor Gray
-        Write-Host "  To: $destinationPath" -ForegroundColor Gray
-        
-        try {
-            Invoke-WebRequest -Uri $fileUrl -OutFile $destinationPath -UseBasicParsing
-            
-            if (Test-Path $destinationPath) {
-                $fileSize = (Get-Item $destinationPath).Length
-                $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
-                Write-Host "  ✓ Downloaded: $fileSizeMB MB" -ForegroundColor Green
-                $downloadedFiles += $fileName
-            } else {
-                Write-Host "  ✗ Failed to download file" -ForegroundColor Red
-            }
-        } catch {
-            Write-Host "  ✗ Download failed: $($_.Exception.Message)" -ForegroundColor Red
-            throw
-        }
-        Write-Host ""
-    }
-    
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Download Summary" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Files downloaded: $($downloadedFiles.Count)" -ForegroundColor White
-    foreach ($file in $downloadedFiles) {
-        Write-Host "  - $file" -ForegroundColor White
-    }
-    Write-Host ""
-    
-    if ($downloadedFiles.Count -lt 2) {
-        Write-Host "⚠ Warning: Expected 2 files (database pack + metadata), but downloaded $($downloadedFiles.Count)" -ForegroundColor Yellow
-    }
-    
-} catch {
-    Write-Host "ERROR: Failed to download patch files from Artifactory" -ForegroundColor Red
-    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Please verify:" -ForegroundColor Yellow
-    Write-Host "  1. The Artifactory URL is correct" -ForegroundColor Yellow
-    Write-Host "  2. The files exist at the specified location" -ForegroundColor Yellow
-    Write-Host "  3. You have network access to Artifactory" -ForegroundColor Yellow
-    Write-Host "  4. Authentication is not required (or credentials are configured)" -ForegroundColor Yellow
+$existingFiles = Get-ChildItem -Path $packageFolder -File -ErrorAction SilentlyContinue
+if (-not $existingFiles -or $existingFiles.Count -eq 0) {
+    Write-Host "ERROR: No patch files found in: $packageFolder" -ForegroundColor Red
+    Write-Host "Place the Oracle database pack (zip) and pack_oracle_dbhome.xml in that folder." -ForegroundColor Red
     exit 1
+}
+
+Write-Host "✓ Found $($existingFiles.Count) file(s) in package folder" -ForegroundColor Green
+foreach ($file in $existingFiles) {
+    Write-Host "  - $($file.Name)" -ForegroundColor White
+}
+Write-Host ""
+
+if (-not (Test-Path (Join-Path $packageFolder "pack_oracle_dbhome.xml"))) {
+    Write-Host "⚠ Warning: pack_oracle_dbhome.xml not found - version validation steps will be skipped" -ForegroundColor Yellow
 }
 
 Write-Host "========================================" -ForegroundColor Cyan

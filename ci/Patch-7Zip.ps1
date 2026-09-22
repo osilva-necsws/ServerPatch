@@ -64,39 +64,41 @@ if (!(Test-Path $artifactsDir)) {
     New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 }
 
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$tempDir = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "7zip" } else { Join-Path $PSScriptRoot "..\temp" }
+# Installer is expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packagePath = Join-Path $PSScriptRoot "..\package"
+if (!(Test-Path $packagePath)) {
+    New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
+}
+
+$tempDir = Join-Path $PSScriptRoot "..\temp"
 if (!(Test-Path $tempDir)) {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 }
 
 $installerPath = Join-Path $tempDir "7z-x64.exe"
 
-if (-not $PackagePath) {
-    $PackagePath = "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tools-generic-local/7zip/latest/7z-x64.exe"
-}
-
-Write-Host "Downloading 7-Zip installer from Artifactory..." -ForegroundColor Cyan
-Write-Host "  URL: $PackagePath" -ForegroundColor Gray
-
-# Check if curl is available
-$curlAvailable = $null -ne (Get-Command curl -ErrorAction SilentlyContinue)
-
-if ($curlAvailable) {
-    Write-Host "Using curl for download..." -ForegroundColor Gray
-    curl --ssl-no-revoke --insecure -L -o $installerPath $PackagePath
+# Resolve the local package: explicit filename via $PackagePath, else the sole *.exe in package/
+if ($PackagePath -and $PackagePath -notmatch '^https?://') {
+    $sourceInstaller = Join-Path $packagePath (Split-Path $PackagePath -Leaf)
 } else {
-    Write-Host "curl not found, using PowerShell Invoke-WebRequest..." -ForegroundColor Gray
-    try {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-        Invoke-WebRequest -Uri $PackagePath -OutFile $installerPath -UseBasicParsing -SkipCertificateCheck -ErrorAction Stop
-    } catch {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-        Invoke-WebRequest -Uri $PackagePath -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
-    } finally {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+    $candidates = Get-ChildItem -Path $packagePath -Filter "*.exe" -File -ErrorAction SilentlyContinue
+    if ($candidates.Count -eq 1) {
+        $sourceInstaller = $candidates[0].FullName
+    } elseif ($candidates.Count -gt 1) {
+        Write-Host "ERROR: Multiple .exe files found in $packagePath - set cpu_Patch7Zip to the exact filename." -ForegroundColor Red
+        exit 1
+    } else {
+        $sourceInstaller = $null
     }
 }
+
+if (-not $sourceInstaller -or -not (Test-Path $sourceInstaller)) {
+    Write-Host "ERROR: 7-Zip installer not found. Place the installer .exe in: $packagePath" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Using local 7-Zip installer: $sourceInstaller" -ForegroundColor Cyan
+Copy-Item -Path $sourceInstaller -Destination $installerPath -Force
 
 if (!(Test-Path $installerPath)) {
     Write-Host "ERROR: 7-Zip installer was not downloaded successfully." -ForegroundColor Red

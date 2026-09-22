@@ -25,62 +25,59 @@ on:
         required: true
         default: '["cyp-gen-windows"]'
       cpu_Patch7Zip:
-        description: "Artifactory URL for 7-Zip installer"
+        description: "Filename of the 7-Zip installer pre-placed in package/ (leave blank if it's the only .exe there)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tools-generic-local/7zip/latest/7z-x64.exe"
+        default: ""
       cpu_PatchDB:
-        description: "Artifactory URL for Oracle patch files (database pack and metadata)"
+        description: "Not used - Oracle patch zip + pack_oracle_dbhome.xml must be pre-placed in package/"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/childview-generic-local/oracleRDBMS/19/19.32.0/"
+        default: ""
       cpu_SID:
         description: "Oracle SID to patch (only used with 'Patch Oracle' action)"
         required: false
         default: ""
       cpu_PatchWebTier:
-        description: "Artifactory URL for Tomcat ZIP file"
+        description: "Filename of the Tomcat ZIP pre-placed in package/ (required)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tomcat-generic-local/Tomcat9/latest/apache-tomcat-9.zip"
+        default: ""
       cpu_DOMAIN:
         description: "Tomcat domain name to patch (empty = all domains)"
         required: false
         default: ""
       FILEHANDLER_URL:
-        description: "Artifactory URL for FileHandler.war"
+        description: "Filename of FileHandler.war pre-placed in package/ (leave blank to skip this optional deployment)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/FileHandler/FileHandler.war"
+        default: ""
       cpu_PatchMetabase:
-        description: "Artifactory URL for Metabase JAR file"
+        description: "Filename of the Metabase JAR pre-placed in package/ (required)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/metabase-generic-local/oss/62/metabase.jar"
+        default: ""
       cpu_PatchMetabase_OJDBC:
-        description: "Artifactory URL for OJDBC JAR file (optional)"
+        description: "Filename of the OJDBC JAR pre-placed in package/ (optional)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/oracle-jdbc-local/ojdbc17/ojdbc17.jar"
+        default: ""
       cpu_PatchApache:
-        description: "Artifactory URL for Apache 2.4 ZIP file"
+        description: "Filename of the Apache 2.4 ZIP pre-placed in package/ (leave blank if it's the only .zip there)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/apache-generic-local/Apache24/httpd-2.4.68.1.zip"
+        default: ""
       cpu_PatchPostgreSQL:
-        description: "Artifactory URL for PostgreSQL v14 ZIP file"
+        description: "Filename of the PostgreSQL v14 ZIP pre-placed in package/ (required)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres14/latest/postgresql-14-windows-x64-binaries.zip"
+        default: ""
       cpu_PatchPostgreSQL_v15:
-        description: "Artifactory URL for PostgreSQL v15 ZIP file (optional)"
+        description: "Filename of the PostgreSQL v15 ZIP pre-placed in package/ (optional)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres15/latest/postgresql-15-windows-x64-binaries.zip"
+        default: ""
       cpu_PatchPostgreSQL_Orafce:
-        description: "Artifactory URL for orafce extension ZIP file (optional)"
+        description: "Filename of the orafce extension ZIP pre-placed in package/ (optional)"
         required: false
-        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/orafce/401/orafce.zip"
+        default: ""
       cpu_RequiredFreeSpace:
         description: "Required free disk space in GB on Oracle home drives"
         required: false
         default: "20"
 
 env:
-  # Persistent, non-workspace directory on each runner where downloaded install
-  # packages are cached across runs (see PATCH_CACHE_DIR usage in ci/*.ps1).
-  PATCH_CACHE_DIR: "C:\\ChildView\\PatchCache"
   cpu_Patch7Zip: ${{ github.event.inputs.cpu_Patch7Zip }}
   cpu_PatchDB: ${{ github.event.inputs.cpu_PatchDB }}
   cpu_SID: ${{ github.event.inputs.cpu_SID }}

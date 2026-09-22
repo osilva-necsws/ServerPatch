@@ -59,15 +59,9 @@ if (Test-Path $sidNotFoundMarker) {
 }
 
 $cpu_SID = $env:cpu_SID
-$cpu_PatchDB = $env:cpu_PatchDB
 
 if ([string]::IsNullOrWhiteSpace($cpu_SID)) {
     Write-Host "❌ ERROR: cpu_SID environment variable is not set" -ForegroundColor Red
-    exit 1
-}
-
-if ([string]::IsNullOrWhiteSpace($cpu_PatchDB)) {
-    Write-Host "❌ ERROR: cpu_PatchDB environment variable is not set" -ForegroundColor Red
     exit 1
 }
 
@@ -89,20 +83,19 @@ if (-not (Test-Path $sqlplusPath)) {
     exit 1
 }
 
-# Retrieve expected version from pack_oracle_dbhome.xml
+# Retrieve expected version from the local pack_oracle_dbhome.xml (Artifactory no longer used)
 $expectedPackVersion = $null
 try {
-    $artifactoryUrl = $cpu_PatchDB.TrimEnd('/') + '/'
-    $packXmlUrl = $artifactoryUrl + 'pack_oracle_dbhome.xml'
-    $tempPackXml = Join-Path $env:TEMP "pack_oracle_dbhome_postpatch_$([guid]::NewGuid()).xml"
+    $packageFolder = Join-Path $PSScriptRoot "..\package"
+    $tempPackXml = Join-Path $packageFolder "pack_oracle_dbhome.xml"
 
-    Write-Host "Downloading pack metadata: $packXmlUrl" -ForegroundColor Cyan
-    Invoke-WebRequest -Uri $packXmlUrl -OutFile $tempPackXml -UseBasicParsing
+    Write-Host "Reading pack metadata: $tempPackXml" -ForegroundColor Cyan
 
     if (Test-Path $tempPackXml) {
         [xml]$packXml = Get-Content $tempPackXml
         $expectedPackVersion = $packXml.Objs.Obj.MS.S | Where-Object { $_.N -eq 'version' } | Select-Object -ExpandProperty '#text'
-        Remove-Item $tempPackXml -Force -ErrorAction SilentlyContinue
+    } else {
+        Write-Host "⚠ WARNING: pack_oracle_dbhome.xml not found in package folder" -ForegroundColor Yellow
     }
 } catch {
     Write-Host "⚠ WARNING: Could not retrieve pack version: $($_.Exception.Message)" -ForegroundColor Yellow

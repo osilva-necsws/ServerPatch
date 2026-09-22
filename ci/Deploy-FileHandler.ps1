@@ -30,8 +30,8 @@ Write-Host ""
 $fileHandlerUrl = $env:FILEHANDLER_URL
 $scriptDir = $PSScriptRoot
 $baseDir = Split-Path $scriptDir -Parent
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "filehandler" } else { Join-Path $baseDir "package" }
+# FileHandler.war is expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packagePath = Join-Path $baseDir "package"
 $modulePath = Join-Path $baseDir "lib"
 $logPath = Join-Path $baseDir "logs"
 $resourcePath = Join-Path $baseDir "resource"
@@ -52,7 +52,7 @@ if ([string]::IsNullOrWhiteSpace($fileHandlerUrl)) {
 }
 
 Write-Host "Configuration:" -ForegroundColor Cyan
-Write-Host "  FileHandler URL = $fileHandlerUrl" -ForegroundColor White
+Write-Host "  FileHandler package = $fileHandlerUrl" -ForegroundColor White
 Write-Host ""
 # Check if tomcat_instances.json exists (from previous job)
 $tomcatJsonPath = Join-Path $baseDir "artifacts\tomcat_instances.json"
@@ -100,7 +100,7 @@ try {
 }
 Write-Host ""
 
-# Download
+# Locate the local package (Artifactory downloads are disabled)
 try {
     if (-not (Test-Path $packagePath)) {
         New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
@@ -108,21 +108,15 @@ try {
 
     $fileName = Split-Path $fileHandlerUrl -Leaf
     $destFile = Join-Path $packagePath $fileName
-    
-    Write-Host "Downloading FileHandler..." -ForegroundColor Cyan
-    Write-Host "  Source: $fileHandlerUrl" -ForegroundColor Gray
-    Write-Host "  Dest:   $destFile" -ForegroundColor Gray
-    
-    Invoke-WebRequest -Uri $fileHandlerUrl -OutFile $destFile -UseBasicParsing
-    
+
     if (-not (Test-Path $destFile)) {
-        throw "Download failed, file not created."
+        throw "FileHandler package not found. Place it at: $destFile"
     }
-    
-    Write-Host "✓ Download complete" -ForegroundColor Green
+
+    Write-Host "✓ Using local package: $destFile" -ForegroundColor Green
     Write-Host ""
 } catch {
-    Write-Host "ERROR: Failed to download FileHandler: $_" -ForegroundColor Red
+    Write-Host "ERROR: $_" -ForegroundColor Red
     exit 1
 }
 

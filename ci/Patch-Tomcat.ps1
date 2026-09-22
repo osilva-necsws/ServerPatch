@@ -86,8 +86,8 @@ Write-Host ""
 # Set up paths
 $modulePath = Join-Path $baseDir "lib"
 $resourcePath = Join-Path $baseDir "resource"
-# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
-$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "tomcat" } else { Join-Path $baseDir "package" }
+# Package files are expected to be pre-placed in the repo's package/ folder (Artifactory no longer used)
+$packagePath = Join-Path $baseDir "package"
 $logPath = Join-Path $baseDir "logs"
 
 # Set global variables for modules
@@ -121,58 +121,30 @@ if (Test-Path $aboutScript) {
     . $aboutScript
 }
 
-# Download Tomcat pack from Artifactory
+# Locate Tomcat pack (pre-placed in package/, Artifactory no longer used)
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Downloading Tomcat Package from Artifactory" -ForegroundColor Cyan
+Write-Host "Locating Tomcat Package" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 try {
-    # Use direct URL from cpu_PatchWebTier
     $tomcatZipUrl = $cpuPatchWebTier
-    
-    # Extract filename from URL
     $tomcatZipFile = Split-Path $tomcatZipUrl -Leaf
     $tomcatPackPath = Join-Path $packagePath $tomcatZipFile
     
     Write-Host "Package Information:" -ForegroundColor Cyan
-    Write-Host "  URL: $tomcatZipUrl" -ForegroundColor White
     Write-Host "  File: $tomcatZipFile" -ForegroundColor White
     Write-Host ""
     
-    # Ensure package directory exists
-    if (-not (Test-Path $packagePath)) {
-        New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
+    if (-not (Test-Path $tomcatPackPath)) {
+        throw "Tomcat package not found. Place it at: $tomcatPackPath"
     }
     
-    # Check if file already exists and verify it
-    $needsDownload = $true
-    if (Test-Path $tomcatPackPath) {
-        Write-Host "Package already exists locally, checking integrity..." -ForegroundColor Cyan
-        try {
-            # Try to extract version to verify it's a valid zip
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($tomcatPackPath)
-            $zip.Dispose()
-            Write-Host "✓ Existing package is valid, skipping download" -ForegroundColor Green
-            $needsDownload = $false
-        } catch {
-            Write-Host "⚠ Existing package is corrupt, will re-download" -ForegroundColor Yellow
-            Remove-Item $tomcatPackPath -Force -ErrorAction SilentlyContinue
-        }
-    }
-    
-    if ($needsDownload) {
-        Write-Host "Downloading Tomcat package from: $tomcatZipUrl" -ForegroundColor Cyan
-        Write-Host "Downloading to: $tomcatPackPath" -ForegroundColor Gray
-        
-        # Download with progress
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri $tomcatZipUrl -OutFile $tomcatPackPath -UseBasicParsing
-        $ProgressPreference = 'Continue'
-        
-        Write-Host "✓ Downloaded Tomcat package" -ForegroundColor Green
-    }
+    Write-Host "Verifying package integrity..." -ForegroundColor Cyan
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($tomcatPackPath)
+    $zip.Dispose()
+    Write-Host "✓ Using local package" -ForegroundColor Green
     
     Write-Host ""
     
