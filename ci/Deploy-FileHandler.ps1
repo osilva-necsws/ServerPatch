@@ -30,7 +30,8 @@ Write-Host ""
 $fileHandlerUrl = $env:FILEHANDLER_URL
 $scriptDir = $PSScriptRoot
 $baseDir = Split-Path $scriptDir -Parent
-$packagePath = Join-Path $baseDir "package"
+# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
+$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "filehandler" } else { Join-Path $baseDir "package" }
 $modulePath = Join-Path $baseDir "lib"
 $logPath = Join-Path $baseDir "logs"
 $resourcePath = Join-Path $baseDir "resource"

@@ -25,9 +25,9 @@ Write-Host ""
 
 # Determine repository base directory
 $scriptDir = $PSScriptRoot
-if ($env:CI_PROJECT_DIR) {
-    $repoDir = $env:CI_PROJECT_DIR
-    Write-Host "Running in CI - using CI_PROJECT_DIR: $repoDir" -ForegroundColor Gray
+if ($env:GITHUB_WORKSPACE) {
+    $repoDir = $env:GITHUB_WORKSPACE
+    Write-Host "Running in CI - using GITHUB_WORKSPACE: $repoDir" -ForegroundColor Gray
 } else {
     $repoDir = Split-Path $scriptDir -Parent
     Write-Host "Running locally - using script parent: $repoDir" -ForegroundColor Gray

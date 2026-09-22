@@ -86,7 +86,8 @@ Write-Host ""
 # Set up paths
 $modulePath = Join-Path $baseDir "lib"
 $resourcePath = Join-Path $baseDir "resource"
-$packagePath = Join-Path $baseDir "package"
+# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
+$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "tomcat" } else { Join-Path $baseDir "package" }
 $logPath = Join-Path $baseDir "logs"
 
 # Set global variables for modules

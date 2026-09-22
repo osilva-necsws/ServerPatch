@@ -12,7 +12,9 @@
 .NOTES
     Author: Auto-generated
     Date: November 12, 2025
-    Used by GitLab CI/CD pipeline orchestrator
+    NOT USED by .github/workflows/patch.yml - multi-server fan-out is now done via a
+    GitHub Actions matrix (see server_labels input) instead of triggering child pipelines.
+    Kept only for reference / GitLab rollback.
 #>
 
 [CmdletBinding()]

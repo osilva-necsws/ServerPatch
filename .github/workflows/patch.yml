@@ -1,0 +1,773 @@
+name: ChildView Patch Pipeline
+
+# Converted from .gitlab-ci.yml. Multi-server support uses a matrix built from
+# the "server_labels" input (a JSON array of self-hosted runner labels) instead
+# of GitLab's dynamic runner-tag discovery, since all matrix jobs run inside a
+# single workflow run and can share artifacts directly.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Select the action to perform"
+        required: true
+        type: choice
+        default: "Create Package"
+        options:
+          - "Patch Oracle"
+          - "Patch Tomcat"
+          - "Patch Metabase"
+          - "Patch PostgreSQL"
+          - "Patch Apache"
+          - "Patch 7-Zip"
+          - "Create Package"
+      server_labels:
+        description: 'JSON array of self-hosted runner labels to target, e.g. ["cyp-gen-windows"] or ["server1","server2"]'
+        required: true
+        default: '["cyp-gen-windows"]'
+      cpu_Patch7Zip:
+        description: "Artifactory URL for 7-Zip installer"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tools-generic-local/7zip/latest/7z-x64.exe"
+      cpu_PatchDB:
+        description: "Artifactory URL for Oracle patch files (database pack and metadata)"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/childview-generic-local/oracleRDBMS/19/19.32.0/"
+      cpu_SID:
+        description: "Oracle SID to patch (only used with 'Patch Oracle' action)"
+        required: false
+        default: ""
+      cpu_PatchWebTier:
+        description: "Artifactory URL for Tomcat ZIP file"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tomcat-generic-local/Tomcat9/latest/apache-tomcat-9.zip"
+      cpu_DOMAIN:
+        description: "Tomcat domain name to patch (empty = all domains)"
+        required: false
+        default: ""
+      FILEHANDLER_URL:
+        description: "Artifactory URL for FileHandler.war"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/FileHandler/FileHandler.war"
+      cpu_PatchMetabase:
+        description: "Artifactory URL for Metabase JAR file"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/metabase-generic-local/oss/62/metabase.jar"
+      cpu_PatchMetabase_OJDBC:
+        description: "Artifactory URL for OJDBC JAR file (optional)"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/oracle-jdbc-local/ojdbc17/ojdbc17.jar"
+      cpu_PatchApache:
+        description: "Artifactory URL for Apache 2.4 ZIP file"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/apache-generic-local/Apache24/httpd-2.4.68.1.zip"
+      cpu_PatchPostgreSQL:
+        description: "Artifactory URL for PostgreSQL v14 ZIP file"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres14/latest/postgresql-14-windows-x64-binaries.zip"
+      cpu_PatchPostgreSQL_v15:
+        description: "Artifactory URL for PostgreSQL v15 ZIP file (optional)"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres15/latest/postgresql-15-windows-x64-binaries.zip"
+      cpu_PatchPostgreSQL_Orafce:
+        description: "Artifactory URL for orafce extension ZIP file (optional)"
+        required: false
+        default: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/orafce/401/orafce.zip"
+      cpu_RequiredFreeSpace:
+        description: "Required free disk space in GB on Oracle home drives"
+        required: false
+        default: "20"
+
+env:
+  # Persistent, non-workspace directory on each runner where downloaded install
+  # packages are cached across runs (see PATCH_CACHE_DIR usage in ci/*.ps1).
+  PATCH_CACHE_DIR: "C:\\ChildView\\PatchCache"
+  cpu_Patch7Zip: ${{ github.event.inputs.cpu_Patch7Zip }}
+  cpu_PatchDB: ${{ github.event.inputs.cpu_PatchDB }}
+  cpu_SID: ${{ github.event.inputs.cpu_SID }}
+  cpu_PatchWebTier: ${{ github.event.inputs.cpu_PatchWebTier }}
+  cpu_DOMAIN: ${{ github.event.inputs.cpu_DOMAIN }}
+  FILEHANDLER_URL: ${{ github.event.inputs.FILEHANDLER_URL }}
+  cpu_PatchMetabase: ${{ github.event.inputs.cpu_PatchMetabase }}
+  cpu_PatchMetabase_OJDBC: ${{ github.event.inputs.cpu_PatchMetabase_OJDBC }}
+  cpu_PatchApache: ${{ github.event.inputs.cpu_PatchApache }}
+  cpu_PatchPostgreSQL: ${{ github.event.inputs.cpu_PatchPostgreSQL }}
+  cpu_PatchPostgreSQL_v15: ${{ github.event.inputs.cpu_PatchPostgreSQL_v15 }}
+  cpu_PatchPostgreSQL_Orafce: ${{ github.event.inputs.cpu_PatchPostgreSQL_Orafce }}
+  cpu_RequiredFreeSpace: ${{ github.event.inputs.cpu_RequiredFreeSpace }}
+
+jobs:
+  # ────────────────────────────── Oracle ──────────────────────────────
+  check_oracle_installed:
+    if: github.event.inputs.action == 'Patch Oracle'
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Check-Oracle-Installed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: |
+            artifacts/oracle_databases.json
+            artifacts/no_databases_found.marker
+          retention-days: 1
+          if-no-files-found: ignore
+
+  validate_oracle_sid:
+    if: github.event.inputs.action == 'Patch Oracle'
+    needs: check_oracle_installed
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: |
+          if (Test-Path "artifacts/no_databases_found.marker") {
+            Write-Host "No Oracle databases found on server - skipping validation" -ForegroundColor Yellow
+            exit 0
+          }
+          ./ci/Validate-Oracle-SID.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-validate-${{ matrix.server }}
+          path: artifacts/sid_not_found.marker
+          retention-days: 1
+          if-no-files-found: ignore
+
+  check_disk_space:
+    if: github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, validate_oracle_sid]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: ./ci/Check-Disk-Space.ps1
+
+  patch_oracle:
+    if: github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, validate_oracle_sid, check_disk_space]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    environment: oracle-patch-${{ matrix.server }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-validate-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: |
+          if (Test-Path "artifacts/no_databases_found.marker") {
+            Write-Host "No Oracle databases found - skipping patch execution" -ForegroundColor Yellow
+            exit 0
+          }
+          if (Test-Path "artifacts/sid_not_found.marker") {
+            Write-Host "SID validation did not find a match - skipping patch execution" -ForegroundColor Yellow
+            exit 0
+          }
+          ./ci/Patch-Oracle.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-patch-${{ matrix.server }}
+          path: |
+            artifacts/dbua_datapatch_status.json
+            artifacts/dbua_output_*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  check_oracle_version_postpatch:
+    if: always() && github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, validate_oracle_sid, patch_oracle]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-validate-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: ./ci/Check-Oracle-PostPatch-Version.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-postpatch-version-${{ matrix.server }}
+          path: |
+            artifacts/oracle_version_check.json
+            artifacts/datapatch_rerun_needed.marker
+          retention-days: 7
+          if-no-files-found: ignore
+
+  rerun_datapatch_if_needed:
+    if: always() && github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, validate_oracle_sid, check_oracle_version_postpatch]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-postpatch-version-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: ./ci/Rerun-Datapatch-If-Needed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-rerun-datapatch-${{ matrix.server }}
+          path: |
+            artifacts/oracle_version_check.json
+            artifacts/datapatch_rerun_needed.marker
+            artifacts/datapatch_rerun.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify_patch_success:
+    if: always() && github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, patch_oracle, check_oracle_version_postpatch, rerun_datapatch_if_needed]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-rerun-datapatch-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: ./ci/Verify-Patch-Success.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-verify-${{ matrix.server }}
+          path: artifacts/patch_verification.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  cleanup_oracle_homes:
+    if: always() && github.event.inputs.action == 'Patch Oracle'
+    needs: [check_oracle_installed, rerun_datapatch_if_needed]
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: ./ci/Cleanup-Oracle-Homes.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-cleanup-${{ matrix.server }}
+          path: artifacts/oracle_cleanup.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── Tomcat ──────────────────────────────
+  check_tomcat_installed:
+    if: github.event.inputs.action == 'Patch Tomcat'
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Check-Tomcat-Installed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tomcat-check-${{ matrix.server }}
+          path: |
+            artifacts/tomcat_instances.json
+            artifacts/no_tomcat_found.marker
+          retention-days: 1
+          if-no-files-found: ignore
+
+  deploy_filehandler:
+    if: github.event.inputs.action == 'Patch Tomcat'
+    needs: check_tomcat_installed
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tomcat-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: ./ci/Deploy-FileHandler.ps1
+
+  patch_tomcat:
+    if: github.event.inputs.action == 'Patch Tomcat'
+    needs: [check_tomcat_installed, deploy_filehandler]
+    environment: tomcat-patch-${{ matrix.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tomcat-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/tomcat_instances.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.TomcatFound -eq $false) {
+              Write-Host "No Tomcat instances found on this server - skipping patch" -ForegroundColor Cyan
+              exit 0
+            }
+          }
+          ./ci/Patch-Tomcat.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tomcat-patch-${{ matrix.server }}
+          path: artifacts/tomcat_patch_complete.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify_tomcat_patch:
+    if: always() && github.event.inputs.action == 'Patch Tomcat'
+    needs: [check_tomcat_installed, patch_tomcat]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tomcat-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: tomcat-patch-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/tomcat_instances.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.TomcatFound -eq $false) {
+              Write-Host "No Tomcat instances found on this server - skipping verification" -ForegroundColor Cyan
+              $skipInfo = @{
+                Hostname = $env:COMPUTERNAME
+                Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                VerificationSkipped = $true
+                Reason = "No Tomcat instances found"
+              }
+              $skipInfo | ConvertTo-Json | Set-Content "artifacts/tomcat_verification.json"
+              exit 0
+            }
+          }
+          ./ci/Verify-Tomcat-Patch.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tomcat-verify-${{ matrix.server }}
+          path: artifacts/tomcat_verification.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── Metabase ──────────────────────────────
+  check_metabase_installed:
+    if: github.event.inputs.action == 'Patch Metabase'
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Check-Metabase-Installed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metabase-check-${{ matrix.server }}
+          path: |
+            artifacts/metabase_instance.json
+            artifacts/no_metabase_found.marker
+          retention-days: 1
+          if-no-files-found: ignore
+
+  patch_metabase:
+    if: github.event.inputs.action == 'Patch Metabase'
+    needs: check_metabase_installed
+    environment: metabase-patch-${{ matrix.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: metabase-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/metabase_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.MetabaseFound -eq $false) {
+              Write-Host "No Metabase instances found on this server - skipping patch" -ForegroundColor Cyan
+              exit 0
+            }
+          }
+          ./ci/Patch-Metabase.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metabase-patch-${{ matrix.server }}
+          path: artifacts/metabase_patch_complete.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify_metabase_patch:
+    if: always() && github.event.inputs.action == 'Patch Metabase'
+    needs: [check_metabase_installed, patch_metabase]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: metabase-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: metabase-patch-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/metabase_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.MetabaseFound -eq $false) {
+              Write-Host "No Metabase instances found on this server - skipping verification" -ForegroundColor Cyan
+              $skipInfo = @{
+                Hostname = $env:COMPUTERNAME
+                Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                VerificationSkipped = $true
+                Reason = "No Metabase instances found"
+              }
+              $skipInfo | ConvertTo-Json | Set-Content "artifacts/metabase_verification.json"
+              exit 0
+            }
+          }
+          ./ci/Verify-Metabase-Patch.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metabase-verify-${{ matrix.server }}
+          path: artifacts/metabase_verification.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── PostgreSQL ──────────────────────────────
+  check_postgresql_installed:
+    if: github.event.inputs.action == 'Patch PostgreSQL'
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Check-PostgreSQL-Installed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: postgresql-check-${{ matrix.server }}
+          path: |
+            artifacts/postgresql_instance.json
+            artifacts/no_postgresql_found.marker
+          retention-days: 1
+          if-no-files-found: ignore
+
+  patch_postgresql:
+    if: github.event.inputs.action == 'Patch PostgreSQL'
+    needs: check_postgresql_installed
+    environment: postgresql-patch-${{ matrix.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: postgresql-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/postgresql_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.PostgreSQLFound -eq $false) {
+              Write-Host "No PostgreSQL instances found on this server - skipping patch" -ForegroundColor Cyan
+              exit 0
+            }
+          }
+          ./ci/Patch-PostgreSQL.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: postgresql-patch-${{ matrix.server }}
+          path: artifacts/postgresql_patch_complete.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify_postgresql_patch:
+    if: always() && github.event.inputs.action == 'Patch PostgreSQL'
+    needs: [check_postgresql_installed, patch_postgresql]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: postgresql-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: postgresql-patch-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/postgresql_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.PostgreSQLFound -eq $false) {
+              Write-Host "No PostgreSQL instances found on this server - skipping verification" -ForegroundColor Cyan
+              $skipInfo = @{
+                Hostname = $env:COMPUTERNAME
+                Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                VerificationSkipped = $true
+                Reason = "No PostgreSQL instances found"
+              }
+              $skipInfo | ConvertTo-Json | Set-Content "artifacts/postgresql_verification.json"
+              exit 0
+            }
+          }
+          ./ci/Verify-PostgreSQL-Patch.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: postgresql-verify-${{ matrix.server }}
+          path: artifacts/postgresql_verification.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── Apache ──────────────────────────────
+  check_apache_installed:
+    if: github.event.inputs.action == 'Patch Apache'
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Check-Apache-Installed.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apache-check-${{ matrix.server }}
+          path: artifacts/apache_instance.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  patch_apache:
+    if: github.event.inputs.action == 'Patch Apache'
+    needs: check_apache_installed
+    environment: apache-patch-${{ matrix.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: apache-check-${{ matrix.server }}
+          path: artifacts
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/apache_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.ApacheFound -eq $false) {
+              Write-Host "No Apache instances found on this server - skipping patch" -ForegroundColor Cyan
+              exit 0
+            }
+          }
+          ./ci/Patch-Apache.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apache-patch-${{ matrix.server }}
+          path: artifacts/apache_patch_complete.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify_apache_patch:
+    if: always() && github.event.inputs.action == 'Patch Apache'
+    needs: [check_apache_installed, patch_apache]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: apache-check-${{ matrix.server }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: apache-patch-${{ matrix.server }}
+          path: artifacts
+          if-no-files-found: ignore
+      - shell: pwsh
+        run: |
+          $jsonPath = "artifacts/apache_instance.json"
+          if (Test-Path $jsonPath) {
+            $data = Get-Content $jsonPath | ConvertFrom-Json
+            if ($data.ApacheFound -eq $false) {
+              Write-Host "No Apache instances found on this server - skipping verification" -ForegroundColor Cyan
+              $skipInfo = @{
+                Hostname = $env:COMPUTERNAME
+                Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                VerificationSkipped = $true
+                Reason = "No Apache instances found"
+              }
+              $skipInfo | ConvertTo-Json | Set-Content "artifacts/apache_verification.json"
+              exit 0
+            }
+          }
+          ./ci/Verify-Apache-Patch.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apache-verify-${{ matrix.server }}
+          path: artifacts/apache_verification.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── 7-Zip ──────────────────────────────
+  patch_7zip:
+    if: github.event.inputs.action == 'Patch 7-Zip'
+    environment: 7zip-patch-${{ matrix.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(github.event.inputs.server_labels) }}
+    runs-on: [self-hosted, "${{ matrix.server }}"]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ci/Patch-7Zip.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 7zip-patch-${{ matrix.server }}
+          path: artifacts/7zip_patch_complete.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ────────────────────────────── Create Package ──────────────────────────────
+  create_package:
+    if: github.event.inputs.action == 'Create Package'
+    runs-on: [self-hosted, cyp-gen-windows]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./cpu_package.ps1 -packname:${{ github.ref_name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: childview-package
+          path: "*packs.zip"
+          retention-days: 30

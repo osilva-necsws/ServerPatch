@@ -12,7 +12,9 @@
 .NOTES
     Author: Auto-generated
     Date: November 13, 2025
-    Used by GitLab CI/CD pipeline orchestrator
+    NOT USED by .github/workflows/patch.yml - GitHub Actions runs all servers as matrix jobs
+    in one workflow run, so each job's own actions/upload-artifact output (visible in the
+    run summary) replaces this GitLab-Jobs-API polling script. Kept only for reference / GitLab rollback.
 #>
 
 [CmdletBinding()]

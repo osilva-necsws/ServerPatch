@@ -34,11 +34,11 @@ Write-Host ""
 $cpuPatchWebTier = $env:cpu_PatchWebTier
 $cpuDomain = $env:cpu_DOMAIN
 
-# Determine repository base directory - prefer CI_PROJECT_DIR if available (running in CI)
+# Determine repository base directory - prefer GITHUB_WORKSPACE if available (running in CI)
 $scriptDir = $PSScriptRoot
-if ($env:CI_PROJECT_DIR) {
-    $repoDir = $env:CI_PROJECT_DIR
-    Write-Host "Running in CI - using CI_PROJECT_DIR: $repoDir" -ForegroundColor Gray
+if ($env:GITHUB_WORKSPACE) {
+    $repoDir = $env:GITHUB_WORKSPACE
+    Write-Host "Running in CI - using GITHUB_WORKSPACE: $repoDir" -ForegroundColor Gray
 } else {
     $repoDir = Split-Path $scriptDir -Parent
     Write-Host "Running locally - using script parent: $repoDir" -ForegroundColor Gray

@@ -64,7 +64,8 @@ if (!(Test-Path $artifactsDir)) {
     New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 }
 
-$tempDir = Join-Path $PSScriptRoot "..\temp"
+# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
+$tempDir = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "7zip" } else { Join-Path $PSScriptRoot "..\temp" }
 if (!(Test-Path $tempDir)) {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 }

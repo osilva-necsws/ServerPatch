@@ -74,7 +74,8 @@ Write-Host "✓ All required environment variables are set" -ForegroundColor Gre
 Write-Host ""
 
 # Set up paths
-$packagePath = Join-Path $baseDir "package"
+# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
+$packagePath = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "metabase" } else { Join-Path $baseDir "package" }
 $logPath = Join-Path $baseDir "logs"
 
 if (-not (Test-Path $packagePath)) {

@@ -252,7 +252,8 @@ Write-Host "Downloading Oracle Patch Files from Artifactory" -ForegroundColor Cy
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$packageFolder = Join-Path $installerRoot "package"
+# Persistent download cache survives runner workspace cleanup; falls back to in-repo folder for local runs
+$packageFolder = if ($env:PATCH_CACHE_DIR) { Join-Path $env:PATCH_CACHE_DIR "oracle" } else { Join-Path $installerRoot "package" }
 if (-not (Test-Path $packageFolder)) {
     Write-Host "Creating package folder: $packageFolder" -ForegroundColor Cyan
     New-Item -Path $packageFolder -ItemType Directory -Force | Out-Null
