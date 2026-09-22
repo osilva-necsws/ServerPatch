@@ -82,9 +82,11 @@ on:
         default: "20"
 
 permissions:
+  contents: read
   packages: read
 
 env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   cpu_Patch7Zip: ${{ github.event.inputs.cpu_Patch7Zip }}
   cpu_PatchDB: ${{ github.event.inputs.cpu_PatchDB }}
   cpu_SID: ${{ github.event.inputs.cpu_SID }}

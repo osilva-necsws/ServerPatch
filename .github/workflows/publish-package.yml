@@ -34,6 +34,7 @@ on:
         default: "cyp-gen-windows"
 
 permissions:
+  contents: read
   packages: write
 
 jobs:
@@ -41,6 +42,8 @@ jobs:
     runs-on: [self-hosted, "${{ github.event.inputs.runner_label }}"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -78,7 +81,9 @@ jobs:
             "-DartifactId=patch-packages" `
             "-Dversion=${{ github.event.inputs.version }}" `
             "-Dpackaging=$type" `
-            "-Dclassifier=$component"
+            "-Dclassifier=$component" `
+            "-DrepositoryId=github" `
+            "-Durl=https://maven.pkg.github.com/osilva-necsws/ServerPatch"
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "ERROR: Publish failed" -ForegroundColor Red

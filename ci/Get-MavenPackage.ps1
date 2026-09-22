@@ -32,13 +32,12 @@ if (-not (Test-Path $packageDir)) {
 }
 
 $destPath = Join-Path $packageDir $DestFileName
-if (Test-Path $destPath) {
-    Write-Host "✓ Already present locally, skipping Maven fetch: $destPath" -ForegroundColor Green
-    exit 0
-}
-
 $artifactCoord = "${GroupId}:${ArtifactId}:${Version}:${Type}:${Classifier}"
 Write-Host "Fetching $artifactCoord from GitHub Packages..." -ForegroundColor Cyan
+
+if (Test-Path $destPath) {
+    Remove-Item $destPath -Force
+}
 
 & mvn -B -f $pomFile -s $settingsFile dependency:copy `
     "-Dartifact=$artifactCoord" `
@@ -50,11 +49,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$downloaded = Get-ChildItem -Path $packageDir -Filter "$ArtifactId-*-$Classifier.$Type" -File | Select-Object -First 1
+$downloadedFileName = "{0}-{1}-{2}.{3}" -f $ArtifactId, $Version, $Classifier, $Type
+$downloadedPath = Join-Path $packageDir $downloadedFileName
+$downloaded = if (Test-Path $downloadedPath) { Get-Item $downloadedPath } else { $null }
 if (-not $downloaded) {
-    Write-Host "ERROR: Downloaded artifact not found in $packageDir (expected pattern: $ArtifactId-*-$Classifier.$Type)" -ForegroundColor Red
+    Write-Host "ERROR: Downloaded artifact not found: $downloadedPath" -ForegroundColor Red
     exit 1
 }
 
 Rename-Item -Path $downloaded.FullName -NewName $DestFileName -Force
-Write-Host "✓ Package ready at: $destPath" -ForegroundColor Green
+Write-Host "Package ready at: $destPath" -ForegroundColor Green
