@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<webtier>
+  <home>unset</home>
+  <config_base>unset</config_base>
+  <verions>0</version>
+  <installed_products>
+    <product name=tomcat>
+      <domain>
+        <name>cv_main</name>
+        <path>c:\CACI\WebTier\tomcat\cv_main</path>
+        <catalina_base>c:\CACI\WebTier\tomcat\cv_main</catalina_base>
+        <windows_service>unset</windows_service>
+        <windows_startup>unset</windows_startup>
+        <ORDS_installations>
+          <name>ChildView_LIVE</name>
+          <active>unset</active>
+          <database>unset</database>
+          <name>ChildView_TEST</name>
+          <active>unset</active>
+          <database>unset</database>
+          <name>ChildView_TRAIN</name>
+          <active>unset</active>
+          <database>unset</database>
+        </ORDS_installation>
+      </domain>
+    </product>
+  </installed_products>
+</webtier>

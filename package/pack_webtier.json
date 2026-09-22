@@ -1,0 +1,49 @@
+{
+  "version": "5.5.0",
+  "name": "WebTier pack",
+  "file": "WebTier.zip",
+  "space": 2030563328,
+  "md5": "F1D782F441FC4150756345F7B5057401",
+  "defaultInstallPath": "CACI\\WebTier",
+  "defaultConfigPath": "CACI\\WebTier\\config",
+  "oracleDB": [
+    {
+      "SID": "CVPROD01",
+      "HOST": "localhost",
+      "PORT": "1521",
+      "creds": [
+        {
+          "username": "APEX_PUBLIC_USER",
+          "password": "Appl3"
+        },
+        {
+          "username": "APEX_LISTENER",
+          "password": "Orang3"
+        },
+        {
+          "username": "APEX_REST_PUBLIC_USER",
+          "password": "L3mon"
+        }
+      ]
+    },
+    {
+      "SID": "CVTEST01",
+      "HOST": "localhost",
+      "PORT": "1521",
+      "creds": [
+        {
+          "username": "APEX_PUBLIC_USER",
+          "password": "Appl3"
+        },
+        {
+          "username": "APEX_LISTENER",
+          "password": "Orang3"
+        },
+        {
+          "username": "APEX_REST_PUBLIC_USER",
+          "password": "L3mon"
+        }
+      ]
+    }
+  ]
+}

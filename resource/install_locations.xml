@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<components>
+  <component name="unset" type="web service" role="all" tier="WebTier">
+    <service>
+      <name>Unset</name>
+      <startmode>Disabled</startmode>
+      <exec>Unset</exec>
+    </service>
+    <folders>
+    </folders>
+    <Access>
+      <url type="main">http://localhost:8080/Nowhere</url>
+      <url type="print">http://localhost:8080/Nowhere</url>
+      <url type="xml">http://localhost:8080/Nowhere</url>
+    </Access>
+    <Ports>
+      <Port type="main">
+        8080
+      </Port>
+    </Ports>
+  </component>
+  <component name="unset" type="db service" role="unset" tier="DBTier">
+    <service>
+      <name>Unset</name>
+      <startmode>Disabled</startmode>
+	  <exec>Unset</exec>
+	  <db_home>Unset</db_home>
+    </service>
+    <folders>
+    </folders>
+    <Access>
+      <url type="db">localhost:1521/CVPROD01</url>
+    </Access>
+  </component>
+  <component name="Unset" type="web images" role="unset" tier="WebTier">
+    <folders>
+    </folders>
+  </component>
+  <component name="Unset" type="web ords" role="unset" tier="WebTier">
+    <folders>
+    </folders>
+  </component>
+</components>

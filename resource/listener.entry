@@ -1,0 +1,6 @@
+# Entry added via CV5 install for [ORACLE_SID] in [ORACLE_HOME]
+    (SID_DESC =
+      (GLOBAL_DBNAME = [ORACLE_SID])
+      (ORACLE_HOME = [ORACLE_HOME])
+      (SID_NAME = [ORACLE_SID])
+    )

@@ -1,0 +1,26 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="file">jdk21.0.8_9.zip</S>
+      <S N="md5">E616E3E363B8F7C67BFACFAA7A4EBBF7</S>
+      <S N="version">21.0.8_9</S>
+      <S N="name">Metabase JDK</S>
+    </MS>
+  </Obj>
+  <Obj RefId="1">
+    <TN RefId="1">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="file">metabase.zip</S>
+      <S N="md5">34D2F3928855259530E48D7252933AAA</S>
+      <S N="version">0.56.9</S>
+      <S N="name">Metabase JAR</S>
+    </MS>
+  </Obj>
+</Objs>

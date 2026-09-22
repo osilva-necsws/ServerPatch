@@ -1,0 +1,38 @@
+{
+  "DiscoveryDate": "2026-01-06 12:51:55",
+  "TomcatDomains": [
+    {
+      "ServiceHome": "D:\\CACI\\WebTier\\tomcat\\bin\\Tomcat9.exe \\\\RS\\",
+      "Version": "Unknown",
+      "Home": "D:\\CACI\\WebTier\\tomcat\\cv_main",
+      "Name": "cv_main",
+      "Base": "D:\\CACI\\WebTier\\tomcat",
+      "CatalinaHome": "D:\\CACI\\WebTier\\tomcat\\cv_main"
+    },
+    {
+      "ServiceHome": "D:\\CACI\\WebTier\\tomcat\\bin\\Tomcat9.exe \\\\RS\\",
+      "Version": "Unknown",
+      "Home": "D:\\CACI\\WebTier\\tomcat\\cv_maint",
+      "Name": "cv_maint",
+      "Base": "D:\\CACI\\WebTier\\tomcat",
+      "CatalinaHome": "D:\\CACI\\WebTier\\tomcat\\cv_maint"
+    },
+    {
+      "ServiceHome": "D:\\CACI\\WebTier\\tomcat\\bin\\Tomcat9.exe \\\\RS\\",
+      "Version": "Unknown",
+      "Home": "D:\\CACI\\WebTier\\tomcat\\cv_support",
+      "Name": "cv_support",
+      "Base": "D:\\CACI\\WebTier\\tomcat",
+      "CatalinaHome": "D:\\CACI\\WebTier\\tomcat\\cv_support"
+    },
+    {
+      "ServiceHome": "D:\\CACI\\WebTier\\tomcat\\bin\\Tomcat9.exe \\\\RS\\",
+      "Version": "Unknown",
+      "Home": "D:\\CACI\\WebTier\\tomcat\\cv_yjb",
+      "Name": "cv_yjb",
+      "Base": "D:\\CACI\\WebTier\\tomcat",
+      "CatalinaHome": "D:\\CACI\\WebTier\\tomcat\\cv_yjb"
+    }
+  ],
+  "Hostname": "KEN-CYGTEST-02"
+}

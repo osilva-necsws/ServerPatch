@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<versions>
+  <metabase>0.58.8</metabase>
+  <buildDate>2026-02-27</buildDate>
+  <notes>Metabase v0.58.0 release - automated pipeline upgrade</notes>
+</versions>

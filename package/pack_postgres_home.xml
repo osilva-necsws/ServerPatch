@@ -1,0 +1,14 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="name">Postgres pack</S>
+      <S N="new_home">14.19</S>
+      <S N="file">postgresql-14.19-2-windows-x64-binaries.zip</S>
+      <S N="md5">4D0CBC53941B83F5224777A965A224AF</S>
+    </MS>
+  </Obj>
+</Objs>

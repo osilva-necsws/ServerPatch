@@ -1,0 +1,7 @@
+shutdown immediate;
+startup dba mount;
+CONFIGURE DEVICE TYPE DISK PARALLELISM 4 BACKUP TYPE TO BACKUPSET;
+backup as compressed backupset database include current controlfile tag ORACLE_UPG;
+shutdown immediate;
+startup;
+exit;

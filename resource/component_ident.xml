@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<components>
+  <component name="cv_main" type="web service" role="all">
+    <tier>WebTier</tier>
+    <srv_search>
+      <srv_match>cv_main</srv_match>
+      <srv_match>childview_main</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="CATALINA_HOME">CACI\WebTier\tomcat\cv_main</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv_maint" type="web service" role="all">
+    <tier>WebTier</tier>
+    <srv_search>
+      <srv_match>cv_maint</srv_match>
+      <srv_match>childview_maint</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="CATALINA_HOME">CACI\WebTier\tomcat\cv_maint</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv_support" type="web service" role="all">
+    <tier>WebTier</tier>
+    <srv_search>
+      <srv_match>cv_support</srv_match>
+      <srv_match>childview_support</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="CATALINA_HOME">CACI\WebTier\tomcat\cv_support</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv_yjb" type="web service" role="all">
+    <tier>WebTier</tier>
+    <srv_search>
+      <srv_match>cv_yjb</srv_match>
+      <srv_match>childview_yjb</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="CATALINA_HOME">CACI\WebTier\tomcat\cv_yjb</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv images prod" type="web images" role="prod">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="IMAGES">CACI\WebTier\tomcat\cv_main\webapps\ROOT\prod</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv ORDS prod" type="web ords" role="prod">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="ORDS">CACI\WebTier\tomcat\cv_main\webapps\ChildView_LIVE</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv images test" type="web images" role="test">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="IMAGES">CACI\WebTier\tomcat\cv_main\webapps\ROOT\test</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv ORDS test" type="web ords" role="test">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="ORDS">CACI\WebTier\tomcat\cv_main\webapps\ChildView_TEST</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv images train" type="web images" role="train">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="IMAGES">CACI\WebTier\tomcat\cv_main\webapps\ROOT\prod</folder_match>
+    </folder_search>
+  </component>
+  <component name="cv ORDS train" type="web ords" role="train">
+    <tier>WebTier</tier>
+    <folder_search>
+      <folder_match folder_type="ORDS">CACI\WebTier\tomcat\cv_main\webapps\ChildView_TRAIN</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVPROD01" type="db service" role="prod" image_prefix="/prod/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVPROD01</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVPROD01</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVPROD01</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVPROD02" type="db service" role="prod" image_prefix="/prod/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVPROD02</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVPROD02</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVPROD02</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVTEST01" type="db service" role="test" image_prefix="/test/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVTEST01</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVTEST01</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVTEST01</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVTEST02" type="db service" role="test" image_prefix="/test/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVTEST02</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVTEST02</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVTEST02</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVTRAIN01" type="db service" role="train" image_prefix="/train/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVTRAIN01</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVTRAIN01</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVTRAIN01</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVTRAIN02" type="db service" role="train" image_prefix="/train/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVTRAIN02</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVTRAIN02</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVTRAIN02</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVVPROD2" type="db service" role="prod" image_prefix="/victimprod/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVVPROD2</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVVPROD2</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVVPROD2</folder_match>
+    </folder_search>
+  </component>
+  <component name="CVVTEST2" type="db service" role="test" image_prefix="/victimtest/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServiceCVVTEST2</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\CVVTEST2</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\CVVTEST2</folder_match>
+    </folder_search>
+  </component>
+  <component name="PYPROD02" type="db service" role="prod" image_prefix="/ythprod/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServicePYPROD02</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\PYPROD02</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\PYPROD02</folder_match>
+    </folder_search>
+  </component>
+  <component name="PYTEST02" type="db service" role="test" image_prefix="/ythtest/">
+    <tier>DBTier</tier>
+    <srv_search>
+      <srv_match>OracleServicePYTEST02</srv_match>
+    </srv_search>
+    <folder_search>
+      <folder_match folder_type="DB_DATAFILES">CACI\DBTier\oradata\PYTEST02</folder_match>
+      <folder_match folder_type="DB_FRA">CACI\DBTier\fast_recovery_area\PYTEST02</folder_match>
+    </folder_search>
+  </component>
+</components>

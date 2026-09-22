@@ -1,0 +1,17 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <I64 N="space">10445414400</I64>
+      <S N="version">19.29.0</S>
+      <S N="name">Database pack</S>
+      <S N="file">WINDOWS.X64_192900_db_home.zip</S>
+      <S N="artifactoryUrl">softwareRepo/childview-generic-local/oracleRDBMS/19/19.29.0/WINDOWS.X64_192900_db_home.zip</S>
+      <S N="md5">63053727843749AC35AF467AC9F82E2D</S>
+      <S N="bck_tag">PRE1923PTCH</S>
+    </MS>
+  </Obj>
+</Objs>

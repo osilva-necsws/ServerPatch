@@ -1,0 +1,14 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="file">jdk1.8.0_472.zip</S>
+      <S N="md5">03F437205F015F82C2B5CC7C4CA3CDEA</S>
+      <S N="version">1.8.0u472</S>
+      <S N="name">JDK pack</S>
+    </MS>
+  </Obj>
+</Objs>

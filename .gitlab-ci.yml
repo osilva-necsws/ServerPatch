@@ -1,0 +1,749 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "api" && $CURRENT_SERVER_TAG != null && $CURRENT_SERVER_TAG != ""
+      when: always
+    - when: never
+
+variables:
+  ACTION:
+    value: "Create Package"
+    options:
+      - "Patch Oracle"
+      - "Patch Tomcat"
+      - "Patch Metabase"
+      - "Patch PostgreSQL"
+      - "Patch Apache"
+      - "Patch 7-Zip"
+      - "Create Package"
+    description: "Select the action to perform"
+  SERVER_GROUP_TAG:
+    value: "cyp-gen-windows"
+    description: "Server group tag(s) to target (comma-separated for multiple) - will automatically discover and run on ALL servers with these tags"
+  cpu_Patch7Zip:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tools-generic-local/7zip/latest/7z-x64.exe"
+    description: "Artifactory URL for 7-Zip installer (direct download link)"
+  cpu_PatchDB:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/childview-generic-local/oracleRDBMS/19/19.32.0/"
+    description: "Artifactory URL for Oracle patch files (database pack and metadata)"
+  cpu_SID:
+    value: ""
+    description: "Oracle SID to patch (only used with 'Patch Oracle' action)"
+  cpu_PatchWebTier:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tomcat-generic-local/Tomcat9/latest/apache-tomcat-9.zip"
+    description: "Artifactory URL for Tomcat ZIP file (direct download link)"
+  FILEHANDLER_URL:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/FileHandler/FileHandler.war"
+    description: "Artifactory URL for FileHandler.war (direct download link)"
+  cpu_PatchMetabase:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/metabase-generic-local/oss/62/metabase.jar"
+    description: "Artifactory URL for Metabase JAR or ZIP file (direct download link)"
+  cpu_PatchMetabase_OJDBC:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/oracle-jdbc-local/ojdbc17/ojdbc17.jar"
+    description: "Artifactory URL for OJDBC JAR file to deploy to Metabase plugins (optional)"
+  cpu_PatchApache:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/apache-generic-local/Apache24/httpd-2.4.68.1.zip"
+    description: "Artifactory URL for Apache 2.4 ZIP file"
+  cpu_PatchPostgreSQL:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres14/latest/postgresql-14-windows-x64-binaries.zip"
+    description: "Artifactory URL for PostgreSQL v14 ZIP file (direct download link)"
+  cpu_PatchPostgreSQL_v15:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/postgres15/latest/postgresql-15-windows-x64-binaries.zip"
+    description: "Artifactory URL for PostgreSQL v15 ZIP file (optional - will patch v15 instances if provided)"
+  cpu_PatchPostgreSQL_Orafce:
+    value: "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/postgres-generic-local/orafce/401/orafce.zip"
+    description: "Artifactory URL for orafce extension ZIP file (optional - deploys Oracle compatibility extension)"
+  cpu_RequiredFreeSpace:
+    value: "20"
+    description: "Required free disk space in GB on Oracle home drives (default: 20GB)"
+  # Internal variables - not shown in UI
+  ORCHESTRATOR_TAG: "cyp-gen-windows"
+  CURRENT_SERVER_TAG: ""
+
+stages:
+  - orchestrate
+  - check
+  - validate
+  - verify
+  - patch
+  - post-patch
+  - build
+  - report
+
+trigger_multi_server:
+  stage: orchestrate
+  tags:
+    - orchestrator
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Metabase" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch PostgreSQL" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Apache" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch 7-Zip" && $CURRENT_SERVER_TAG == ""'
+  script:
+    - ./ci/Trigger-Multi-Server.ps1
+  variables:
+    ORCHESTRATOR_TAG: "OudjaniTAG"
+    CURRENT_SERVER_TAG: ""
+    SERVER_GROUP_TAG: $SERVER_GROUP_TAG
+    ACTION: $ACTION
+    cpu_PatchDB: $cpu_PatchDB
+    cpu_SID: $cpu_SID
+    cpu_PatchWebTier: $cpu_PatchWebTier
+    cpu_PatchMetabase: $cpu_PatchMetabase
+    cpu_PatchMetabase_OJDBC: $cpu_PatchMetabase_OJDBC
+    cpu_PatchPostgreSQL: $cpu_PatchPostgreSQL
+    cpu_PatchPostgreSQL_v15: $cpu_PatchPostgreSQL_v15
+    cpu_PatchPostgreSQL_Orafce: $cpu_PatchPostgreSQL_Orafce
+    cpu_PatchApache: $cpu_PatchApache
+    cpu_Patch7Zip: $cpu_Patch7Zip
+    cpu_DOMAIN: $cpu_DOMAIN
+    cpu_RequiredFreeSpace: $cpu_RequiredFreeSpace
+    GITLAB_API_TOKEN: $GITLAB_API_TOKEN
+  artifacts:
+    paths:
+      - artifacts/triggered_pipelines.json
+    expire_in: 1 day
+    when: always
+
+check_oracle_installed:
+  stage: check
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Check-Oracle-Installed.ps1
+  artifacts:
+    paths:
+      - artifacts/oracle_databases.json
+      - artifacts/no_databases_found.marker
+    expire_in: 1 day
+    when: always
+  allow_failure: false
+
+validate_oracle_sid:
+  stage: validate
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+  script:
+    - |
+      if (Test-Path "artifacts/no_databases_found.marker") {
+        Write-Host "⚠ No Oracle databases found on server - skipping validation" -ForegroundColor Yellow
+        exit 0
+      }
+    - ./ci/Validate-Oracle-SID.ps1
+  variables:
+    cpu_SID: $cpu_SID
+    cpu_PatchDB: $cpu_PatchDB
+  artifacts:
+    paths:
+      - artifacts/sid_not_found.marker
+    expire_in: 1 day
+    when: always
+  allow_failure: false
+
+check_disk_space:
+  stage: verify
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+    - job: validate_oracle_sid
+      artifacts: true
+  script:
+    - ./ci/Check-Disk-Space.ps1
+  variables:
+    cpu_RequiredFreeSpace: $cpu_RequiredFreeSpace
+  allow_failure: false
+
+patch_oracle:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+    - job: validate_oracle_sid
+      artifacts: true
+    - job: check_disk_space
+  script:
+    - |
+      if (Test-Path "artifacts/no_databases_found.marker") {
+        Write-Host "⚠ No Oracle databases found on server - skipping patch execution" -ForegroundColor Yellow
+        exit 0
+      }
+    - |
+      if (Test-Path "artifacts/sid_not_found.marker") {
+        Write-Host "⚠ SID validation did not find a match - skipping patch execution" -ForegroundColor Yellow
+        exit 0
+      }
+    - ./ci/Patch-Oracle.ps1
+  environment:
+    name: oracle-patch-$CURRENT_SERVER_TAG
+  variables:
+    cpu_PatchDB: $cpu_PatchDB
+    cpu_SID: $cpu_SID
+  artifacts:
+    paths:
+      - artifacts/dbua_datapatch_status.json
+      - artifacts/dbua_output_*.log
+    expire_in: 7 days
+    when: always
+
+verify_patch_success:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+      when: always
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+    - job: patch_oracle
+      optional: true
+    - job: check_oracle_version_postpatch
+      artifacts: true
+    - job: rerun_datapatch_if_needed
+      optional: true
+  script:
+    - ./ci/Verify-Patch-Success.ps1
+  variables:
+    cpu_SID: $cpu_SID
+    cpu_PatchDB: $cpu_PatchDB
+  artifacts:
+    paths:
+      - artifacts/patch_verification.json
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+check_oracle_version_postpatch:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+      when: always
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+    - job: validate_oracle_sid
+      artifacts: true
+    - job: patch_oracle
+      optional: true
+  script:
+    - ./ci/Check-Oracle-PostPatch-Version.ps1
+  variables:
+    cpu_SID: $cpu_SID
+    cpu_PatchDB: $cpu_PatchDB
+  artifacts:
+    paths:
+      - artifacts/oracle_version_check.json
+      - artifacts/datapatch_rerun_needed.marker
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+rerun_datapatch_if_needed:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+      when: always
+  needs:
+    - job: check_oracle_version_postpatch
+      artifacts: true
+    - job: check_oracle_installed
+      artifacts: true
+    - job: validate_oracle_sid
+      artifacts: true
+  script:
+    - ./ci/Rerun-Datapatch-If-Needed.ps1
+  variables:
+    cpu_SID: $cpu_SID
+    cpu_PatchDB: $cpu_PatchDB
+  artifacts:
+    paths:
+      - artifacts/oracle_version_check.json
+      - artifacts/datapatch_rerun_needed.marker
+      - artifacts/datapatch_rerun.log
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+cleanup_oracle_homes:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG != ""'
+      when: always
+  needs:
+    - job: check_oracle_installed
+      artifacts: true
+    - job: rerun_datapatch_if_needed
+      optional: true
+  script:
+    - ./ci/Cleanup-Oracle-Homes.ps1
+  artifacts:
+    paths:
+      - artifacts/oracle_cleanup.json
+    expire_in: 7 days
+    when: always
+  allow_failure: true
+
+check_tomcat_installed:
+  stage: check
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Check-Tomcat-Installed.ps1
+  artifacts:
+    paths:
+      - artifacts/tomcat_instances.json
+      - artifacts/no_tomcat_found.marker
+    expire_in: 1 day
+    when: always
+  allow_failure: false
+
+patch_tomcat:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_tomcat_installed
+      artifacts: true
+    - job: deploy_filehandler
+      optional: true
+  script:
+    - |
+      $jsonPath = "artifacts/tomcat_instances.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.TomcatFound -eq $false) {
+          Write-Host "⏭️ No Tomcat instances found on this server - skipping patch" -ForegroundColor Cyan
+          exit 0
+        }
+      }
+    - ./ci/Patch-Tomcat.ps1
+  artifacts:
+    paths:
+      - artifacts/tomcat_patch_complete.json
+    expire_in: 7 days
+    when: always
+  environment:
+    name: tomcat-patch-$SERVER_GROUP_TAG
+
+deploy_filehandler:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_tomcat_installed
+      artifacts: true
+  script:
+    - ./ci/Deploy-FileHandler.ps1
+  allow_failure: true
+
+verify_tomcat_patch:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_tomcat_installed
+      artifacts: true
+    - job: patch_tomcat
+      artifacts: true
+      optional: true
+  script:
+    - |
+      $jsonPath = "artifacts/tomcat_instances.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.TomcatFound -eq $false) {
+          Write-Host "⏭️ No Tomcat instances found on this server - skipping verification" -ForegroundColor Cyan
+          
+          # Create empty verification artifact to avoid upload warning
+          $artifactsDir = "artifacts"
+          if (-not (Test-Path $artifactsDir)) { New-Item -Path $artifactsDir -ItemType Directory -Force | Out-Null }
+          
+          $skipInfo = @{
+            Hostname = $env:COMPUTERNAME
+            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            VerificationSkipped = $true
+            Reason = "No Tomcat instances found"
+          }
+          $skipInfo | ConvertTo-Json | Set-Content "artifacts/tomcat_verification.json"
+          
+          exit 0
+        }
+      }
+    - ./ci/Verify-Tomcat-Patch.ps1
+  artifacts:
+    paths:
+      - artifacts/tomcat_verification.json
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+check_metabase_installed:
+  stage: check
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Metabase" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Check-Metabase-Installed.ps1
+  artifacts:
+    paths:
+      - artifacts/metabase_instance.json
+      - artifacts/no_metabase_found.marker
+    expire_in: 1 day
+    when: always
+  allow_failure: false
+
+check_postgresql_installed:
+  stage: check
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch PostgreSQL" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Check-PostgreSQL-Installed.ps1
+  artifacts:
+    paths:
+      - artifacts/postgresql_instance.json
+      - artifacts/no_postgresql_found.marker
+    expire_in: 1 day
+    when: always
+  allow_failure: false
+
+patch_metabase:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Metabase" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_metabase_installed
+      artifacts: true
+  script:
+    - |
+      $jsonPath = "artifacts/metabase_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.MetabaseFound -eq $false) {
+          Write-Host "⏭️ No Metabase instances found on this server - skipping patch" -ForegroundColor Cyan
+          exit 0
+        }
+      }
+    - ./ci/Patch-Metabase.ps1
+  artifacts:
+    paths:
+      - artifacts/metabase_patch_complete.json
+    expire_in: 7 days
+    when: always
+  environment:
+    name: metabase-patch-$SERVER_GROUP_TAG
+
+verify_metabase_patch:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Metabase" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_metabase_installed
+      artifacts: true
+    - job: patch_metabase
+      artifacts: true
+      optional: true
+  script:
+    - |
+      $jsonPath = "artifacts/metabase_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.MetabaseFound -eq $false) {
+          Write-Host "⏭️ No Metabase instances found on this server - skipping verification" -ForegroundColor Cyan
+          
+          # Create empty verification artifact to avoid upload warning
+          $artifactsDir = "artifacts"
+          if (-not (Test-Path $artifactsDir)) { New-Item -Path $artifactsDir -ItemType Directory -Force | Out-Null }
+          
+          $skipInfo = @{
+            Hostname = $env:COMPUTERNAME
+            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            VerificationSkipped = $true
+            Reason = "No Metabase instances found"
+          }
+          $skipInfo | ConvertTo-Json | Set-Content "artifacts/metabase_verification.json"
+          
+          exit 0
+        }
+      }
+    - ./ci/Verify-Metabase-Patch.ps1
+  artifacts:
+    paths:
+      - artifacts/metabase_verification.json
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+patch_postgresql:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch PostgreSQL" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_postgresql_installed
+      artifacts: true
+  script:
+    - |
+      $jsonPath = "artifacts/postgresql_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.PostgreSQLFound -eq $false) {
+          Write-Host "⏭️ No PostgreSQL instances found on this server - skipping patch" -ForegroundColor Cyan
+          exit 0
+        }
+      }
+    - ./ci/Patch-PostgreSQL.ps1
+  artifacts:
+    paths:
+      - artifacts/postgresql_patch_complete.json
+    expire_in: 7 days
+    when: always
+  environment:
+    name: postgresql-patch-$SERVER_GROUP_TAG
+
+verify_postgresql_patch:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch PostgreSQL" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_postgresql_installed
+      artifacts: true
+    - job: patch_postgresql
+      artifacts: true
+      optional: true
+  script:
+    - |
+      $jsonPath = "artifacts/postgresql_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.PostgreSQLFound -eq $false) {
+          Write-Host "⏭️ No PostgreSQL instances found on this server - skipping verification" -ForegroundColor Cyan
+          
+          # Create empty verification artifact to avoid upload warning
+          $artifactsDir = "artifacts"
+          if (-not (Test-Path $artifactsDir)) { New-Item -Path $artifactsDir -ItemType Directory -Force | Out-Null }
+          
+          $skipInfo = @{
+            Hostname = $env:COMPUTERNAME
+            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            VerificationSkipped = $true
+            Reason = "No PostgreSQL instances found"
+          }
+          $skipInfo | ConvertTo-Json | Set-Content "artifacts/postgresql_verification.json"
+          
+          exit 0
+        }
+      }
+    - ./ci/Verify-PostgreSQL-Patch.ps1
+  artifacts:
+    paths:
+      - artifacts/postgresql_verification.json
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+check_apache_installed:
+  stage: check
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Apache" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Check-Apache-Installed.ps1
+  artifacts:
+    paths:
+      - artifacts/apache_instance.json
+    expire_in: 7 days
+    when: always
+
+patch_apache:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Apache" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_apache_installed
+      artifacts: true
+  script:
+    - |
+      $jsonPath = "artifacts/apache_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.ApacheFound -eq $false) {
+          Write-Host "⏭️ No Apache instances found on this server - skipping patch" -ForegroundColor Cyan
+          exit 0
+        }
+      }
+    - ./ci/Patch-Apache.ps1
+  artifacts:
+    paths:
+      - artifacts/apache_patch_complete.json
+    expire_in: 7 days
+    when: always
+  environment:
+    name: apache-patch-$SERVER_GROUP_TAG
+
+verify_apache_patch:
+  stage: post-patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch Apache" && $CURRENT_SERVER_TAG != ""'
+  needs:
+    - job: check_apache_installed
+      artifacts: true
+    - job: patch_apache
+      artifacts: true
+      optional: true
+  script:
+    - |
+      $jsonPath = "artifacts/apache_instance.json"
+      if (Test-Path $jsonPath) {
+        $data = Get-Content $jsonPath | ConvertFrom-Json
+        if ($data.ApacheFound -eq $false) {
+          Write-Host "⏭️ No Apache instances found on this server - skipping verification" -ForegroundColor Cyan
+          $artifactsDir = "artifacts"
+          if (-not (Test-Path $artifactsDir)) { New-Item -Path $artifactsDir -ItemType Directory -Force | Out-Null }
+          $skipInfo = @{
+            Hostname = $env:COMPUTERNAME
+            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            VerificationSkipped = $true
+            Reason = "No Apache instances found"
+          }
+          $skipInfo | ConvertTo-Json | Set-Content "artifacts/apache_verification.json"
+          exit 0
+        }
+      }
+    - ./ci/Verify-Apache-Patch.ps1
+  artifacts:
+    paths:
+      - artifacts/apache_verification.json
+    expire_in: 7 days
+    when: always
+  allow_failure: false
+
+create_package:
+  stage: build
+  tags:
+    - cyp-gen-windows
+  rules:
+    - if: $ACTION == "Create Package"
+  script:
+    - ./cpu_package.ps1 -packname:$CI_COMMIT_BRANCH
+  artifacts:
+    paths:
+      - "*packs.zip"
+    expire_in: 30 days
+
+patch_7zip:
+  stage: patch
+  tags:
+    - $SERVER_GROUP_TAG
+    - $CURRENT_SERVER_TAG
+  rules:
+    - if: '$ACTION == "Patch 7-Zip" && $CURRENT_SERVER_TAG != ""'
+  script:
+    - ./ci/Patch-7Zip.ps1
+  artifacts:
+    paths:
+      - artifacts/7zip_patch_complete.json
+    expire_in: 7 days
+    when: always
+  environment:
+    name: 7zip-patch-$SERVER_GROUP_TAG
+
+generate_report:
+  stage: report
+  timeout: 3h
+  tags:
+    - orchestrator
+  rules:
+    - if: '$ACTION == "Patch Oracle" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Tomcat" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Metabase" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch PostgreSQL" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch Apache" && $CURRENT_SERVER_TAG == ""'
+    - if: '$ACTION == "Patch 7-Zip" && $CURRENT_SERVER_TAG == ""'
+  needs:
+    - job: trigger_multi_server
+      artifacts: true
+      optional: true
+  script:
+    - ./ci/Generate-Pipeline-Report.ps1
+  variables:
+    REPORT_EMAIL_TO: $REPORT_EMAIL_TO
+    REPORT_EMAIL_FROM: $REPORT_EMAIL_FROM
+    SMTP_SERVER: $SMTP_SERVER
+  artifacts:
+    paths:
+      - artifacts/pipeline_report.html
+    expire_in: 7 days
+    when: always
+  when: always

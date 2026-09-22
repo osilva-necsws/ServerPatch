@@ -1,0 +1,13 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="file">apache-tomcat-9.0.111.zip</S>
+      <S N="md5">93EB998A0B291FD16682734DF2AF4E3A</S>
+      <S N="name">WebTier pack</S>
+    </MS>
+  </Obj>
+</Objs>

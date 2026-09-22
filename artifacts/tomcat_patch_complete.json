@@ -1,0 +1,14 @@
+{
+  "PatchedDomains": [
+    null,
+    null,
+    "cv_main",
+    "cv_maint",
+    "cv_support",
+    "cv_yjb"
+  ],
+  "PatchDate": "2026-01-06 12:49:53",
+  "ArtifactoryURL": "https://artifactory.cyp.caci.co.uk:8051/artifactory/softwareRepo/tomcat-generic-local/Tomcat9/apache-tomcat-9.0.112.zip",
+  "TomcatPackage": "apache-tomcat-9.0.112.zip",
+  "Hostname": "KEN-CYGTEST-02"
+}

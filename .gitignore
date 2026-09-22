@@ -1,0 +1,14 @@
+/logs/cfgtoollogs/upgrade/auto/autoupgrade.log
+/logs/cfgtoollogs/upgrade/auto/autoupgrade_err.log
+/logs/cfgtoollogs/upgrade/auto/autoupgrade_user.log
+/logs/cfgtoollogs/upgrade/auto/lock/lock
+/logs/install_13-05-2020.log
+/logs/install_14-05-2020.log
+/deployment-dev.zip
+/deployment-dev-no19c_or_apex.zip
+/deploment-dev-onlypacks.zip
+/Platform_config.xml
+/deployment-dev-nopacks.zip
+/logs/*.log
+/package/*.zip
+package/VC_redist.x64.exe

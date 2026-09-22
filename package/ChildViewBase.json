@@ -1,0 +1,145 @@
+{
+	"version": "5.5.0",
+	"platforms": [
+		{
+			"Type": "WebTierApex",
+			"defaultInstallPath": "CACI\\WebTier",
+			"defaultConfigPath": "CACI\\WebTier\\config",
+			"packName": "WebTier.zip",
+			"packDetails": "pack_webtier.json",
+			"space": 2030563328,
+			"md5": "F1D782F441FC4150756345F7B5057401",
+			"cv_support_xml": "CACI\\WebTier\\tomcat\\cv_support\\conf\\server.xml",
+			"cv_yjb_xml": "CACI\\WebTier\\tomcat\\cv_yjb\\conf\\server.xml",
+			"jdk_required" : ["JDK8","JDK11"]
+		},
+		{
+			"Type": "DBTierOracle",
+			"defaultInstallPath": "CACI\\DBTier",
+			"packName": "WINDOWS.X64_192300_db_home.zip",
+			"packDetails": "pack_oracle_dbhome.xml"
+		},
+		{
+			"Type": "JDK8",
+			"jdkHome" : "CACI\\WebTier\\Java\\jdk8",
+			"packName": "jdk1.8.0_412.zip",
+			"packDetails": "pack_webtier.json",
+			"space": 2030563328,
+			"md5": "F1D782F441FC4150756345F7B5057401"		
+		},
+		{
+			"Type": "JDK11",
+			"jdkHome" : "CACI\\WebTier\\Java\\jdk11",
+			"packName": "jdk11.zip",
+			"packDetails": "pack_webtier.json",
+			"space": 2030563328,
+			"md5": "F1D782F441FC4150756345F7B5057401"			
+		},
+		{
+			"Type": "JDK17",
+			"jdkHome" : "CACI\\WebTier\\Java\\jdk17",
+			"packName": "jdk17.zip",
+			"packDetails": "pack_webtier.json",
+			"space": 2030563328,
+			"md5": "F1D782F441FC4150756345F7B5057401"			
+		}
+	],
+	"environments": [
+		{
+			"Name": "prod",
+			"Type": "WebTierApex",
+			"oracleDB": [
+				{
+					"SID": "CVPROD01",
+					"HOST": "localhost",
+					"PORT": "1521",
+					"username": "IMPULSE",
+					"password": "M3talP3t4l",
+					"configXML": "cv_main\\ChildViewLIVE\\defaults.xml",
+					"creds": [
+						{
+							"username": "APEX_PUBLIC_USER",
+							"password": "Appl3",
+							"configXML": "cv_main\\ChildViewLIVE\\conf\\apex.xml",
+							"use" : "ords"  
+						},
+						{
+							"username": "APEX_LISTENER",
+							"password": "Orang3",
+							"configXML": "cv_main\\ChildViewLIVE\\conf\\apex_al.xml",
+							"use" : "ords"  
+						},
+						{
+							"username": "APEX_REST_PUBLIC_USER",
+							"password": "L3mon",
+							"configXML": "cv_main\\ChildViewLIVE\\conf\\apex_rt.xml",
+							"use" : "ords" 
+						},
+						{
+							"username": "IMPULSE",
+							"password": "M3talP3t4l",
+							"configXML": "N/A",
+							"use" : "tomcatSupportPool",
+							"poolName" : "CACI_JDBC_Pool_Live"   
+						},
+						{
+							"username": "CVW_LISTENER",
+							"password": "cvw_listener",
+							"configXML": "N/A",
+							"use" : "tomcatYJBPool",
+							"poolName" : "CACI_JDBC_Pool_Live"   
+						}
+					]
+				}
+			]
+		},
+		{
+			"Name": "test",
+			"Type": "WebTierApex",
+			"oracleDB": [
+					{
+						"SID": "CVTEST01",
+						"HOST": "localhost",
+						"PORT": "1521",
+						"username": "IMPULSE",
+						"password": "M3talP3t4l",
+						"configXML": "cv_main\\ChildViewTEST\\defaults.xml",
+						"creds": [
+							{
+								"username": "APEX_PUBLIC_USER",
+								"password": "Appl3",
+								"configXML": "cv_main\\ChildViewTEST\\conf\\apex.xml",
+								"use" : "ords" 
+							},
+							{
+								"username": "APEX_LISTENER",
+								"password": "Orang3",
+								"configXML": "cv_main\\ChildViewTEST\\conf\\apex.xml",
+								"use" : "ords"  
+							},
+							{
+								"username": "APEX_REST_PUBLIC_USER",
+								"password": "L3mon",
+								"configXML": "cv_main\\ChildViewTEST\\conf\\apex.xml",
+								"use" : "ords" 								 
+							},
+							{
+								"username": "IMPULSE",
+								"password": "M3talP3t4l",
+								"configXML": "N/A",
+								"use" : "tomcatSupportPool",
+								"poolName" : "CACI_JDBC_Pool_Test" 
+							},
+							{
+								"username": "CVW_LISTENER",
+								"password": "cvw_listener",
+								"configXML": "N/A",
+								"use" : "tomcatYJBPool",
+								"poolName" : "CACI_JDBC_Pool_Test"  
+							}
+						]
+					}
+				]
+		}
+	]
+}
